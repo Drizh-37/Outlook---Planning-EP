@@ -55,7 +55,7 @@ param(
     [int]$Port = 8765,
 
     [Parameter(Mandatory = $false, HelpMessage = 'Chemin du fichier de configuration JSON.')]
-    [string]$FichierConfig = (Join-Path $PSScriptRoot 'config.json'),
+    [string]$FichierConfig,
 
     [Parameter(Mandatory = $false, HelpMessage = 'Ne pas ouvrir le navigateur automatiquement.')]
     [switch]$SansNavigateur
@@ -72,7 +72,12 @@ $OL_MEETING          = 1   # olMeeting : le rendez-vous devient une réunion ave
 $OL_REQUIRED         = 1   # olRequired : participant « Obligatoire »
 $OL_BUSY             = 2   # olBusy
 
-$FichierHtml = Join-Path $PSScriptRoot 'Planning-Outlook.html'
+# Dossier du script : calculé ici et non dans param(), car Windows PowerShell 5.1
+# peut laisser $PSScriptRoot vide à ce stade (selon le mode de lancement)
+$DossierScript = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Definition }
+if (-not $FichierConfig) { $FichierConfig = Join-Path $DossierScript 'config.json' }
+
+$FichierHtml = Join-Path $DossierScript 'Planning-Outlook.html'
 $Utf8SansBom = New-Object System.Text.UTF8Encoding($false)
 
 $script:Outlook   = $null
