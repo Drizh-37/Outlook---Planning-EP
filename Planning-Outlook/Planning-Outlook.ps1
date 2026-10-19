@@ -71,8 +71,7 @@ $OL_APPOINTMENT_ITEM = 1   # olAppointmentItem (aussi DefaultItemType d'un dossi
 $OL_MEETING          = 1   # olMeeting : le rendez-vous devient une réunion avec participants
 $OL_REQUIRED         = 1   # olRequired : participant « Obligatoire »
 $OL_BUSY             = 2   # olBusy
-$OL_FOLDER_CALENDAR  = 9   # olFolderCalendar (GetDefaultFolder)
-$OL_MODULE_CALENDAR  = 1   # olModuleCalendar (volet de navigation)
+$OL_FOLDER_CALENDAR  = 9   # olFolderCalendar (GetSharedDefaultFolder)
 
 # Dossier du script : calculé ici et non dans param(), car Windows PowerShell 5.1
 # peut laisser $PSScriptRoot vide à ce stade (selon le mode de lancement)
@@ -85,6 +84,8 @@ $Utf8SansBom = New-Object System.Text.UTF8Encoding($false)
 $script:Outlook   = $null
 $script:Namespace = $null
 $script:Arret     = $false
+$script:CalendrierCache = $null
+$script:CheminCache     = $null
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Fonctions Outlook
@@ -112,107 +113,64 @@ function Get-OutlookNamespace {
     return $script:Namespace
 }
 
-function Add-Calendrier {
+function Get-Calendrier {
     <#
     .SYNOPSIS
-        Ajoute un dossier à la liste s'il n'y figure pas déjà (comparaison par EntryID).
-    #>
-    param(
-        [Parameter(Mandatory)] [object]$Dossier,
-        [Parameter(Mandatory)] [AllowEmptyCollection()] [System.Collections.Generic.List[object]]$Liste,
-        [Parameter(Mandatory)] [AllowEmptyCollection()] [System.Collections.Generic.HashSet[string]]$Vus
-    )
-
-    if ($Vus.Add([string]$Dossier.EntryID)) {
-        $Liste.Add($Dossier)
-    }
-}
-
-function Get-CalendriersRecursif {
-    <#
-    .SYNOPSIS
-        Parcourt récursivement un dossier Outlook et collecte les sous-dossiers de type Calendrier.
-    #>
-    param(
-        [Parameter(Mandatory)] [object]$Dossier,
-        [Parameter(Mandatory)] [AllowEmptyCollection()] [System.Collections.Generic.List[object]]$Liste,
-        [Parameter(Mandatory)] [AllowEmptyCollection()] [System.Collections.Generic.HashSet[string]]$Vus
-    )
-
-    if ($Dossier.DefaultItemType -eq $OL_APPOINTMENT_ITEM) {
-        Add-Calendrier -Dossier $Dossier -Liste $Liste -Vus $Vus
-    }
-
-    foreach ($sousDossier in $Dossier.Folders) {
-        try {
-            Get-CalendriersRecursif -Dossier $sousDossier -Liste $Liste -Vus $Vus
-        }
-        catch {
-            # Sous-dossier inaccessible (droits insuffisants) : on l'ignore
-        }
-    }
-}
-
-function Get-TousLesCalendriers {
-    <#
-    .SYNOPSIS
-        Renvoie tous les dossiers Calendrier accessibles depuis Outlook.
+        Ouvre directement le calendrier désigné par son FolderPath (ex. \\Cpdl.ServiceInformatique\Calendrier),
+        sans parcourir les autres calendriers.
 
     .NOTES
-        Deux sources sont combinées :
-          1. les boîtes aux lettres (la vôtre et celles ajoutées automatiquement) ;
-          2. le volet Calendrier d'Outlook, qui contient aussi les calendriers ouverts
-             avec « Ouvrir le calendrier partagé » (absents des boîtes aux lettres).
+        1. Accès par le chemin : boîte aux lettres visible dans Outlook, puis sous-dossiers.
+        2. Repli : calendrier partagé de la boîte (GetSharedDefaultFolder), si elle n'est
+           pas ajoutée au profil Outlook mais que vous avez les droits dessus.
+        Le dossier trouvé est gardé en mémoire pour les lots suivants.
     #>
-    $namespace = Get-OutlookNamespace
-    $liste     = [System.Collections.Generic.List[object]]::new()
-    $vus       = [System.Collections.Generic.HashSet[string]]::new()
+    param([Parameter(Mandatory)] [string]$Chemin)
 
-    foreach ($store in $namespace.Stores) {
-        try {
-            Get-CalendriersRecursif -Dossier $store.GetRootFolder() -Liste $liste -Vus $vus
-        }
-        catch {
-            Write-Host "  Boîte ignorée ($($store.DisplayName)) : $($_.Exception.Message)" -ForegroundColor DarkYellow
-        }
+    if ($null -ne $script:CalendrierCache -and $script:CheminCache -eq $Chemin) {
+        return $script:CalendrierCache
     }
 
+    $namespace = Get-OutlookNamespace
+    $segments  = @($Chemin.TrimStart('\') -split '\\' | Where-Object { $_ })
+    if ($segments.Count -lt 2) {
+        throw "Chemin de calendrier invalide : '$Chemin'. Format attendu : \\Boîte\Calendrier"
+    }
+
+    $dossier = $null
     try {
-        $explorateur = $script:Outlook.ActiveExplorer()
-        if ($null -eq $explorateur) {
-            $explorateur = $namespace.GetDefaultFolder($OL_FOLDER_CALENDAR).GetExplorer()
-        }
-        $module = $explorateur.NavigationPane.Modules.GetNavigationModule($OL_MODULE_CALENDAR)
-        foreach ($groupe in $module.NavigationGroups) {
-            foreach ($navDossier in $groupe.NavigationFolders) {
-                try {
-                    Add-Calendrier -Dossier $navDossier.Folder -Liste $liste -Vus $vus
-                }
-                catch {
-                    Write-Host "  Calendrier partagé inaccessible ($($navDossier.DisplayName)) : $($_.Exception.Message)" -ForegroundColor DarkYellow
-                }
-            }
+        $dossier = $namespace.Folders.Item($segments[0])
+        foreach ($segment in $segments[1..($segments.Count - 1)]) {
+            $dossier = $dossier.Folders.Item($segment)
         }
     }
     catch {
-        Write-Host "  Volet Calendrier non lu : $($_.Exception.Message)" -ForegroundColor DarkYellow
+        $dossier = $null
     }
 
-    Write-Host "  $($liste.Count) calendrier(s) trouvé(s)." -ForegroundColor Gray
-    return , $liste
-}
-
-function Find-Calendrier {
-    <#
-    .SYNOPSIS
-        Retrouve un calendrier par son identifiant Outlook (EntryID) ou, à défaut, son FolderPath.
-    #>
-    param([Parameter(Mandatory)] [string]$FolderPath)
-
-    foreach ($cal in (Get-TousLesCalendriers)) {
-        if ($cal.EntryID -eq $FolderPath -or $cal.FolderPath -eq $FolderPath) { return $cal }
+    if ($null -eq $dossier -and $segments.Count -eq 2) {
+        try {
+            $destinataire = $namespace.CreateRecipient($segments[0])
+            if ($destinataire.Resolve()) {
+                $dossier = $namespace.GetSharedDefaultFolder($destinataire, $OL_FOLDER_CALENDAR)
+            }
+        }
+        catch {
+            $dossier = $null
+        }
     }
-    throw "Calendrier introuvable : $FolderPath"
+
+    if ($null -eq $dossier) {
+        throw "Calendrier introuvable : $Chemin. Vérifiez que la boîte « $($segments[0]) » apparaît dans Outlook et que vous avez les droits d'écriture."
+    }
+    if ($dossier.DefaultItemType -ne $OL_APPOINTMENT_ITEM) {
+        throw "Le dossier $Chemin n'est pas un calendrier."
+    }
+
+    Write-Host "  Calendrier ouvert : $($dossier.FolderPath)" -ForegroundColor Green
+    $script:CalendrierCache = $dossier
+    $script:CheminCache     = $Chemin
+    return $dossier
 }
 
 function ConvertFrom-DateIso {
@@ -331,7 +289,7 @@ function Invoke-Import {
     #>
     param([Parameter(Mandatory)] [object]$Demande)
 
-    $calendrier = Find-Calendrier -FolderPath ([string]$Demande.calendrier)
+    $calendrier = Get-Calendrier -Chemin ([string]$Demande.calendrier)
     $evenements = @($Demande.evenements)
     $resultats  = [System.Collections.Generic.List[object]]::new()
 
@@ -482,12 +440,9 @@ function Invoke-Requete {
                 Write-Host "  Configuration enregistrée : $FichierConfig" -ForegroundColor Green
                 Send-Json -Contexte $Contexte -Objet @{ ok = $true }
             }
-            'GET /api/calendriers' {
-                $liste = foreach ($cal in (Get-TousLesCalendriers)) {
-                    $proprietaire = try { [string]$cal.Store.DisplayName } catch { '' }
-                    @{ id = [string]$cal.EntryID; nom = [string]$cal.Name; folderPath = [string]$cal.FolderPath; boite = $proprietaire }
-                }
-                Send-Json -Contexte $Contexte -Objet @{ calendriers = @($liste) }
+            'GET /api/calendrier' {
+                $cal = Get-Calendrier -Chemin ([string]$requete.QueryString['chemin'])
+                Send-Json -Contexte $Contexte -Objet @{ nom = [string]$cal.Name; folderPath = [string]$cal.FolderPath }
             }
             'POST /api/importer' {
                 $demande = Read-Corps -Requete $requete | ConvertFrom-Json

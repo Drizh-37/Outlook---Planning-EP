@@ -23,7 +23,7 @@ Les trois premiers fichiers doivent rester dans le même dossier.
    Une fenêtre PowerShell s'ouvre (à laisser ouverte), puis le navigateur affiche l'application.
 3. Étape 1 : déposer le fichier Excel (onglet dont le nom commence par « Planning »).
 4. Étape 2 : vérifier l'aperçu et les incohérences.
-5. Étape 3 : choisir le calendrier partagé, cliquer sur **Simuler**, puis sur **Injecter dans Outlook**.
+5. Étape 3 : le calendrier `\\Cpdl.ServiceInformatique\Calendrier` est déjà renseigné. Cliquer sur **Vérifier**, puis **Simuler**, puis **Injecter dans Outlook**.
 
 Options de l'étape 3 :
 
@@ -32,7 +32,7 @@ Options de l'étape 3 :
 - **Envoyer l'invitation aux collaborateurs** (décoché par défaut) : sans cette case,
   le collaborateur figure en « Obligatoire » mais ne reçoit aucun mail.
 
-Le calendrier choisi est mémorisé pour la fois suivante.
+Seul ce calendrier est ouvert : l'application ne parcourt pas les autres. Un autre chemin peut être saisi dans le champ ; il est mémorisé pour la fois suivante.
 
 ## Configurer l'équipe
 
@@ -67,7 +67,7 @@ désormais le participant obligatoire et la catégorie ; le script
 |---|---|
 | La fenêtre se ferme aussitôt | Stratégie d'exécution bloquée par GPO : lancer `powershell -ExecutionPolicy Bypass -File Planning-Outlook.ps1` ou faire signer le script |
 | « Port déjà utilisé » | `Lancer-Planning-Outlook.cmd -Port 9000` |
-| Calendrier absent de la liste | Vérifier que le calendrier partagé est affiché dans le volet Calendrier d'Outlook, puis cliquer sur **Actualiser**. Le détail de la recherche s'affiche dans la fenêtre PowerShell |
+| « Calendrier introuvable » | Vérifier que la boîte Cpdl.ServiceInformatique apparaît dans Outlook (ou que vous avez les droits sur son calendrier) et que le chemin est exact |
 | Dates sur la mauvaise année | Saisir l'année du premier jour dans « Année de la première colonne » (étape 1) ; le passage décembre → janvier est automatique |
 | Alerte Outlook « Un programme tente d'accéder… » | Antivirus non reconnu par Outlook : accepter, ou voir avec l'équipe sécurité |
 | Catégorie affichée en blanc | Le nom saisi ne correspond pas exactement à une catégorie existante dans Outlook |

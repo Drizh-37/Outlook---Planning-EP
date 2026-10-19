@@ -517,10 +517,10 @@
 
       <div class="param-grid" style="grid-template-columns:1fr auto;align-items:end;">
         <div>
-          <label for="outlook-calendrier">Calendrier cible</label>
-          <select id="outlook-calendrier"><option value="">Chargement des calendriers…</option></select>
+          <label for="outlook-calendrier">Calendrier cible (chemin Outlook)</label>
+          <input type="text" id="outlook-calendrier" spellcheck="false">
         </div>
-        <button class="btn btn-secondary btn-sm" onclick="chargerCalendriers()">↻ Actualiser</button>
+        <button class="btn btn-secondary btn-sm" onclick="verifierCalendrier()">✔ Vérifier</button>
       </div>
 
       <label class="check">
@@ -560,7 +560,7 @@ const CLE_STOCKAGE = 'planning-outlook-config';
 /* ── Configuration par défaut (modifiable depuis l'interface) ── */
 const CONFIG_DEFAUT = {
   version: 1,
-  calendrier: '',
+  calendrier: '\\\\Cpdl.ServiceInformatique\\Calendrier',
   heureDebut: '09:00',
   heureFin: '16:00',
   categories: {
@@ -615,7 +615,8 @@ async function api(chemin, corps) {
 function fusionnerConfig(brute) {
   const c = structuredClone(CONFIG_DEFAUT);
   if (!brute || typeof brute !== 'object') return c;
-  if (typeof brute.calendrier === 'string') c.calendrier = brute.calendrier;
+  /* Seul un chemin Outlook (\\Boîte\Dossier) est retenu ; un ancien identifiant est ignoré */
+  if (typeof brute.calendrier === 'string' && brute.calendrier.startsWith('\\\\')) c.calendrier = brute.calendrier;
   if (/^\d{2}:\d{2}$/.test(brute.heureDebut)) c.heureDebut = brute.heureDebut;
   if (/^\d{2}:\d{2}$/.test(brute.heureFin))   c.heureFin   = brute.heureFin;
   if (brute.categories) for (const k of Object.keys(c.categories)) {
@@ -1514,29 +1515,15 @@ function messageOutlook(html, type) {
   document.getElementById('outlook-msg').innerHTML = html ? `<div class="alert alert-${type}">${html}</div>` : '';
 }
 
-async function chargerCalendriers() {
-  const select = document.getElementById('outlook-calendrier');
-  select.innerHTML = '<option value="">Chargement des calendriers…</option>';
+async function verifierCalendrier() {
+  const chemin = document.getElementById('outlook-calendrier').value.trim();
+  if (!chemin) { messageOutlook('Indiquez le chemin du calendrier.', 'error'); return; }
+  messageOutlook('Ouverture du calendrier…', 'info');
   try {
-    const { calendriers } = await api('/api/calendriers');
-    if (!calendriers.length) {
-      select.innerHTML = '<option value="">Aucun calendrier trouvé</option>';
-      messageOutlook('Outlook ne renvoie aucun calendrier. Vérifiez qu\'Outlook est ouvert et que le calendrier partagé est affiché dans le volet Calendrier, puis cliquez sur « Actualiser ». Le détail figure dans la fenêtre PowerShell.', 'error');
-      return;
-    }
-    /* Ancienne configuration : calendrier mémorisé par son chemin plutôt que par son identifiant */
-    const memorise = calendriers.find(c => c.id === CONFIG.calendrier || c.folderPath === CONFIG.calendrier);
-    select.innerHTML = '<option value="">Choisir un calendrier…</option>' + calendriers.map(c => {
-      const libelle = c.boite && !c.folderPath.includes(c.boite) ? `${c.folderPath}  (${c.boite})` : c.folderPath;
-      return `<option value="${esc(c.id)}" ${memorise && c.id === memorise.id ? 'selected' : ''}>${esc(libelle)}</option>`;
-    }).join('');
-    messageOutlook('');
-    if (CONFIG.calendrier && !memorise) {
-      messageOutlook(`Le calendrier mémorisé n'est plus accessible : ${esc(CONFIG.calendrier)}`, 'error');
-    }
+    const cal = await api('/api/calendrier?chemin=' + encodeURIComponent(chemin));
+    messageOutlook(`✅ Calendrier accessible : ${esc(cal.folderPath)}`, 'success');
   } catch (e) {
-    select.innerHTML = '<option value="">Outlook inaccessible</option>';
-    messageOutlook(`Impossible de lister les calendriers : ${esc(e.message)}`, 'error');
+    messageOutlook(esc(e.message), 'error');
   }
 }
 
@@ -1552,15 +1539,15 @@ function evenementsPourOutlook() {
 }
 
 async function injecterOutlook(simulation) {
-  const calendrier = document.getElementById('outlook-calendrier').value;
-  if (!calendrier) { messageOutlook('Choisissez d\'abord le calendrier cible.', 'error'); return; }
+  const calendrier = document.getElementById('outlook-calendrier').value.trim();
+  if (!calendrier) { messageOutlook('Indiquez d\'abord le calendrier cible.', 'error'); return; }
   if (!allEvents.length) return;
 
   const envoyer  = document.getElementById('outlook-envoyer').checked;
   const doublons = document.getElementById('outlook-doublons').checked;
   if (!simulation && envoyer && !confirm(`${allEvents.length} invitation(s) vont être envoyées par mail aux collaborateurs. Continuer ?`)) return;
 
-  /* Mémoriser le calendrier choisi pour la prochaine fois */
+  /* Mémoriser le calendrier pour la prochaine fois */
   if (calendrier !== CONFIG.calendrier) {
     CONFIG.calendrier = calendrier;
     sauverConfig(CONFIG).catch(e => console.warn('Calendrier non mémorisé', e));
@@ -1654,7 +1641,9 @@ dz.addEventListener('drop', e => {
 
 /* ── Démarrage ── */
 renderModeBanner();
-chargerConfig().then(() => { if (CONNECTE) chargerCalendriers(); });
+chargerConfig().then(() => {
+  document.getElementById('outlook-calendrier').value = CONFIG.calendrier;
+});
 
 </script>
 </body>
