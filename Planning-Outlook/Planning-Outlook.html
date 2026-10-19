@@ -269,7 +269,7 @@
     font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
   }
 
-  input[type=text], input[type=email], input[type=time], select {
+  input[type=text], input[type=email], input[type=time], input[type=number], select {
     font: inherit; font-size: 0.83rem; color: var(--text);
     padding: 0.35rem 0.5rem; width: 100%;
     border: 1px solid var(--border); border-radius: 5px; background: var(--white);
@@ -341,6 +341,17 @@
       Colonnes <code>Région</code> · <code>Site</code> · <code>Nom Personne</code> puis les dates en entête (ex. <code>08-juin</code>).
       Les cellules contiennent <code>PR</code>, <code>PRCP</code> (Proxi), <code>EXPL</code> (Exploitation) ou sont vides.
       Les autres codes (PS93, BF93…) sont ignorés automatiquement.
+    </div>
+    <div class="param-grid" style="margin:0.75rem 0 0;grid-template-columns:minmax(180px,240px) 1fr;align-items:end;">
+      <div>
+        <label for="annee-debut">Année de la première colonne</label>
+        <input type="number" id="annee-debut" min="2000" max="2100" step="1" placeholder="Automatique">
+      </div>
+      <p style="font-size:0.78rem;color:var(--text-muted);margin:0;">
+        Le fichier Excel ne donne pas l'année. Laissez vide pour une estimation automatique,
+        ou saisissez l'année du premier jour du planning. Le passage à l'année suivante
+        (décembre → janvier) est géré automatiquement.
+      </p>
     </div>
     <span class="diag-toggle" onclick="toggleDiag()">🔍 Afficher le diagnostic</span>
     <div class="diag-box" id="diag-box"></div>
@@ -682,16 +693,21 @@ function normalizeName(raw) {
   return null;
 }
 
+/* Abréviations de mois (sans accents, en minuscules) : formats Excel français et anglais */
+const MOIS = {
+  jan:0, janv:0, janvier:0, fev:1, fevr:1, fevrier:1, feb:1, mar:2, mars:2,
+  avr:3, avril:3, apr:3, mai:4, may:4, jun:5, juin:5, jul:6, juil:6, juillet:6,
+  aou:7, aout:7, aug:7, sep:8, sept:8, septembre:8, oct:9, octobre:9,
+  nov:10, novembre:10, dec:11, decembre:11,
+};
+
 /* ── Parse date depuis l'entête de colonne ── */
 function parseHeaderDate(header, referenceYear) {
   if (!header) return null;
   const h = header.toString().trim();
 
   /* Format DD-MMM ou DD/MMM */
-  const months = {
-    jan:0, fév:1, fev:1, feb:1, mar:2, avr:3, apr:3, mai:4, may:4,
-    jun:5, juin:5, jul:6, juil:6, aoû:7, aou:7, aug:7, sep:8, oct:9, nov:10, déc:11, dec:11
-  };
+  const months = MOIS;
   const m = h.match(/^(\d{1,2})[-\/\s]([a-záéèêôûùîàäëïü]+)\.?$/i);
   if (m) {
     const day = parseInt(m[1], 10);
@@ -712,12 +728,13 @@ function parseHeaderDate(header, referenceYear) {
   return null;
 }
 
+function estDateTexte(header) {
+  return /^(\d{1,2})[-\/\s]([a-záéèêôûùîàäëïü]+)\.?$/i.test(String(header ?? '').trim());
+}
+
 /* ── Détecter l'année des données ── */
 function detectYear(headers) {
-  const months = {
-    jan:0,fév:1,fev:1,feb:1,mar:2,avr:3,apr:3,mai:4,may:4,
-    jun:5,juin:5,jul:6,juil:6,aoû:7,aou:7,aug:7,sep:8,oct:9,nov:10,déc:11,dec:11
-  };
+  const months = MOIS;
   let firstMonth = null;
   for (const h of headers) {
     const s = h.toString().trim();
@@ -775,6 +792,7 @@ function toggleDiag() {
 function parseWorkbook(wb) {
   const events = [];
   const errors = [];
+  let periode = null;
   diagLines.length = 0;
 
   diagLog('ok', `Fichier lu — ${wb.SheetNames.length} feuille(s) : ${wb.SheetNames.join(', ')}`);
@@ -857,15 +875,32 @@ function parseWorkbook(wb) {
     if (colNom === -1) { colRegion = 0; colSite = 1; colNom = 2; }
     diagLog('', `  Colonnes : Région=${colRegion}, Site=${colSite}, Nom=${colNom}`);
 
-    /* Trouver l'année probable */
+    /* Année de la première colonne : saisie manuelle, sinon estimation */
     const dateHeaders = headers.slice(colNom + 1).map(h => h.toString());
-    const year = detectYear(dateHeaders);
-    diagLog('', `  Année détectée : ${year}`);
+    const anneeForcee = parseInt(document.getElementById('annee-debut').value, 10);
+    const year = anneeForcee >= 2000 ? anneeForcee : detectYear(dateHeaders);
+    diagLog('', `  Année de départ : ${year} (${anneeForcee >= 2000 ? 'saisie' : 'estimée'})`);
 
-    /* Construire la liste des colonnes de dates */
+    /* Construire la liste des colonnes de dates.
+       Les entêtes texte (« 08-juin ») n'ont pas d'année : les colonnes étant
+       chronologiques, on passe à l'année suivante dès que le mois recule
+       (ex. 31-déc puis 01-janv). Les vraies dates Excel gardent leur année. */
     const failedHeaders = [];
+    let annee = year;
+    let moisPrecedent = null;
     for (let j = colNom + 1; j < headers.length; j++) {
-      const d = parseHeaderDate(headers[j], year);
+      let d = parseHeaderDate(headers[j], annee);
+      if (d && estDateTexte(headers[j])) {
+        if (moisPrecedent !== null && d.getMonth() < moisPrecedent) {
+          annee++;
+          d = parseHeaderDate(headers[j], annee);
+          diagLog('', `  Passage à l'année ${annee} en colonne ${j} (${headers[j]})`);
+        }
+        moisPrecedent = d.getMonth();
+      } else if (d) {
+        annee = d.getFullYear();
+        moisPrecedent = d.getMonth();
+      }
       if (d) {
         dateColumns.push({ col: j, date: d });
       } else {
@@ -884,6 +919,7 @@ function parseWorkbook(wb) {
       errors.push(`Feuille "${sheetName}" : aucune colonne de date reconnue.`);
       continue;
     }
+    periode = { debut: dateColumns[0].date, fin: dateColumns[dateColumns.length - 1].date };
 
     /* Parcourir les lignes de données */
     let eventsInSheet = 0;
@@ -933,7 +969,7 @@ function parseWorkbook(wb) {
   }
 
   diagLog('', `\n── Total : ${events.length} événement(s), ${errors.length} avertissement(s)`);
-  return { events, errors, sheetName: targetSheet };
+  return { events, errors, sheetName: targetSheet, periode };
 }
 
 /* ── Afficher les erreurs / messages ── */
@@ -1254,7 +1290,7 @@ function reset() {
 
 /* ── Analyse du classeur et affichage (relancée si la configuration change) ── */
 function analyserClasseur(wb) {
-  const { events, errors, sheetName } = parseWorkbook(wb);
+  const { events, errors, sheetName, periode } = parseWorkbook(wb);
   allEvents = events;
 
   document.getElementById('preview-section').style.display = 'block';
@@ -1263,7 +1299,9 @@ function analyserClasseur(wb) {
   /* Afficher le nom de l'onglet analysé */
   const sheetInfo = document.getElementById('sheet-info');
   if (sheetName) {
-    document.getElementById('sheet-name-display').textContent = sheetName;
+    const fmt = d => d.toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' });
+    document.getElementById('sheet-name-display').textContent = sheetName
+      + (periode ? `, période du ${fmt(periode.debut)} au ${fmt(periode.fin)}` : '');
     sheetInfo.style.display = 'flex';
   } else {
     sheetInfo.style.display = 'none';
@@ -1481,9 +1519,19 @@ async function chargerCalendriers() {
   select.innerHTML = '<option value="">Chargement des calendriers…</option>';
   try {
     const { calendriers } = await api('/api/calendriers');
-    select.innerHTML = '<option value="">Choisir un calendrier…</option>' + calendriers.map(c =>
-      `<option value="${esc(c.folderPath)}" ${c.folderPath === CONFIG.calendrier ? 'selected' : ''}>${esc(c.folderPath)}</option>`).join('');
-    if (CONFIG.calendrier && select.value !== CONFIG.calendrier) {
+    if (!calendriers.length) {
+      select.innerHTML = '<option value="">Aucun calendrier trouvé</option>';
+      messageOutlook('Outlook ne renvoie aucun calendrier. Vérifiez qu\'Outlook est ouvert et que le calendrier partagé est affiché dans le volet Calendrier, puis cliquez sur « Actualiser ». Le détail figure dans la fenêtre PowerShell.', 'error');
+      return;
+    }
+    /* Ancienne configuration : calendrier mémorisé par son chemin plutôt que par son identifiant */
+    const memorise = calendriers.find(c => c.id === CONFIG.calendrier || c.folderPath === CONFIG.calendrier);
+    select.innerHTML = '<option value="">Choisir un calendrier…</option>' + calendriers.map(c => {
+      const libelle = c.boite && !c.folderPath.includes(c.boite) ? `${c.folderPath}  (${c.boite})` : c.folderPath;
+      return `<option value="${esc(c.id)}" ${memorise && c.id === memorise.id ? 'selected' : ''}>${esc(libelle)}</option>`;
+    }).join('');
+    messageOutlook('');
+    if (CONFIG.calendrier && !memorise) {
       messageOutlook(`Le calendrier mémorisé n'est plus accessible : ${esc(CONFIG.calendrier)}`, 'error');
     }
   } catch (e) {
@@ -1587,6 +1635,10 @@ function renderModeBanner() {
 }
 
 /* ── Événements DOM ── */
+document.getElementById('annee-debut').addEventListener('change', () => {
+  if (lastWorkbook) analyserClasseur(lastWorkbook);
+});
+
 document.getElementById('file-input').addEventListener('change', function(e) {
   handleFile(e.target.files[0]);
 });

@@ -71,6 +71,8 @@ $OL_APPOINTMENT_ITEM = 1   # olAppointmentItem (aussi DefaultItemType d'un dossi
 $OL_MEETING          = 1   # olMeeting : le rendez-vous devient une réunion avec participants
 $OL_REQUIRED         = 1   # olRequired : participant « Obligatoire »
 $OL_BUSY             = 2   # olBusy
+$OL_FOLDER_CALENDAR  = 9   # olFolderCalendar (GetDefaultFolder)
+$OL_MODULE_CALENDAR  = 1   # olModuleCalendar (volet de navigation)
 
 # Dossier du script : calculé ici et non dans param(), car Windows PowerShell 5.1
 # peut laisser $PSScriptRoot vide à ce stade (selon le mode de lancement)
@@ -110,6 +112,22 @@ function Get-OutlookNamespace {
     return $script:Namespace
 }
 
+function Add-Calendrier {
+    <#
+    .SYNOPSIS
+        Ajoute un dossier à la liste s'il n'y figure pas déjà (comparaison par EntryID).
+    #>
+    param(
+        [Parameter(Mandatory)] [object]$Dossier,
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [System.Collections.Generic.List[object]]$Liste,
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [System.Collections.Generic.HashSet[string]]$Vus
+    )
+
+    if ($Vus.Add([string]$Dossier.EntryID)) {
+        $Liste.Add($Dossier)
+    }
+}
+
 function Get-CalendriersRecursif {
     <#
     .SYNOPSIS
@@ -117,16 +135,17 @@ function Get-CalendriersRecursif {
     #>
     param(
         [Parameter(Mandatory)] [object]$Dossier,
-        [Parameter(Mandatory)] [System.Collections.Generic.List[object]]$Liste
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [System.Collections.Generic.List[object]]$Liste,
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [System.Collections.Generic.HashSet[string]]$Vus
     )
 
     if ($Dossier.DefaultItemType -eq $OL_APPOINTMENT_ITEM) {
-        $Liste.Add($Dossier)
+        Add-Calendrier -Dossier $Dossier -Liste $Liste -Vus $Vus
     }
 
     foreach ($sousDossier in $Dossier.Folders) {
         try {
-            Get-CalendriersRecursif -Dossier $sousDossier -Liste $Liste
+            Get-CalendriersRecursif -Dossier $sousDossier -Liste $Liste -Vus $Vus
         }
         catch {
             # Sous-dossier inaccessible (droits insuffisants) : on l'ignore
@@ -138,31 +157,60 @@ function Get-TousLesCalendriers {
     <#
     .SYNOPSIS
         Renvoie tous les dossiers Calendrier accessibles depuis Outlook.
+
+    .NOTES
+        Deux sources sont combinées :
+          1. les boîtes aux lettres (la vôtre et celles ajoutées automatiquement) ;
+          2. le volet Calendrier d'Outlook, qui contient aussi les calendriers ouverts
+             avec « Ouvrir le calendrier partagé » (absents des boîtes aux lettres).
     #>
     $namespace = Get-OutlookNamespace
     $liste     = [System.Collections.Generic.List[object]]::new()
+    $vus       = [System.Collections.Generic.HashSet[string]]::new()
 
     foreach ($store in $namespace.Stores) {
         try {
-            Get-CalendriersRecursif -Dossier $store.GetRootFolder() -Liste $liste
+            Get-CalendriersRecursif -Dossier $store.GetRootFolder() -Liste $liste -Vus $vus
         }
         catch {
-            # Certains stores peuvent être inaccessibles (boîte déconnectée, etc.)
+            Write-Host "  Boîte ignorée ($($store.DisplayName)) : $($_.Exception.Message)" -ForegroundColor DarkYellow
         }
     }
 
+    try {
+        $explorateur = $script:Outlook.ActiveExplorer()
+        if ($null -eq $explorateur) {
+            $explorateur = $namespace.GetDefaultFolder($OL_FOLDER_CALENDAR).GetExplorer()
+        }
+        $module = $explorateur.NavigationPane.Modules.GetNavigationModule($OL_MODULE_CALENDAR)
+        foreach ($groupe in $module.NavigationGroups) {
+            foreach ($navDossier in $groupe.NavigationFolders) {
+                try {
+                    Add-Calendrier -Dossier $navDossier.Folder -Liste $liste -Vus $vus
+                }
+                catch {
+                    Write-Host "  Calendrier partagé inaccessible ($($navDossier.DisplayName)) : $($_.Exception.Message)" -ForegroundColor DarkYellow
+                }
+            }
+        }
+    }
+    catch {
+        Write-Host "  Volet Calendrier non lu : $($_.Exception.Message)" -ForegroundColor DarkYellow
+    }
+
+    Write-Host "  $($liste.Count) calendrier(s) trouvé(s)." -ForegroundColor Gray
     return , $liste
 }
 
 function Find-Calendrier {
     <#
     .SYNOPSIS
-        Retrouve un calendrier par son FolderPath complet.
+        Retrouve un calendrier par son identifiant Outlook (EntryID) ou, à défaut, son FolderPath.
     #>
     param([Parameter(Mandatory)] [string]$FolderPath)
 
     foreach ($cal in (Get-TousLesCalendriers)) {
-        if ($cal.FolderPath -eq $FolderPath) { return $cal }
+        if ($cal.EntryID -eq $FolderPath -or $cal.FolderPath -eq $FolderPath) { return $cal }
     }
     throw "Calendrier introuvable : $FolderPath"
 }
@@ -436,7 +484,8 @@ function Invoke-Requete {
             }
             'GET /api/calendriers' {
                 $liste = foreach ($cal in (Get-TousLesCalendriers)) {
-                    @{ nom = [string]$cal.Name; folderPath = [string]$cal.FolderPath }
+                    $proprietaire = try { [string]$cal.Store.DisplayName } catch { '' }
+                    @{ id = [string]$cal.EntryID; nom = [string]$cal.Name; folderPath = [string]$cal.FolderPath; boite = $proprietaire }
                 }
                 Send-Json -Contexte $Contexte -Objet @{ calendriers = @($liste) }
             }

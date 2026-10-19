@@ -67,7 +67,8 @@ désormais le participant obligatoire et la catégorie ; le script
 |---|---|
 | La fenêtre se ferme aussitôt | Stratégie d'exécution bloquée par GPO : lancer `powershell -ExecutionPolicy Bypass -File Planning-Outlook.ps1` ou faire signer le script |
 | « Port déjà utilisé » | `Lancer-Planning-Outlook.cmd -Port 9000` |
-| Calendrier absent de la liste | Vérifier que le calendrier partagé est bien ouvert dans Outlook, puis cliquer sur **Actualiser** |
+| Calendrier absent de la liste | Vérifier que le calendrier partagé est affiché dans le volet Calendrier d'Outlook, puis cliquer sur **Actualiser**. Le détail de la recherche s'affiche dans la fenêtre PowerShell |
+| Dates sur la mauvaise année | Saisir l'année du premier jour dans « Année de la première colonne » (étape 1) ; le passage décembre → janvier est automatique |
 | Alerte Outlook « Un programme tente d'accéder… » | Antivirus non reconnu par Outlook : accepter, ou voir avec l'équipe sécurité |
 | Catégorie affichée en blanc | Le nom saisi ne correspond pas exactement à une catégorie existante dans Outlook |
 | « Adresse non reconnue par Outlook » | Corriger l'email du collaborateur dans la configuration |
