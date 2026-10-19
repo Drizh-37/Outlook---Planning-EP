@@ -40,11 +40,32 @@ Dans l'encart « Codes traités », ouvrir **Modifier la configuration** :
 
 - ajouter, modifier ou supprimer un collaborateur (nom tel qu'écrit dans Excel, site, email) ;
 - renseigner les variantes d'écriture du nom, séparées par `;` (ex. `KOIBITCH Sophien; KOIBICH Sophie`) ;
-- ajuster les horaires et le nom exact des catégories Outlook ;
+- gérer les **codes reconnus** dans les cellules (voir ci-dessous) ;
+- ajuster les horaires par défaut et le nom exact des catégories Outlook ;
 - **Enregistrer** : le fichier `config.json` est écrit à côté du script.
 
 Les boutons **Exporter / Importer (JSON)** permettent de partager la même configuration
 entre plusieurs postes.
+
+## Configurer les codes
+
+Chaque code reconnu dans le planning se décrit sur une ligne :
+
+| Champ | Rôle | Exemple |
+|---|---|---|
+| Code | Valeur saisie dans la cellule Excel (majuscules ou minuscules) | `EXPL` |
+| Variantes | Autres écritures du même code, séparées par `;` | `PRCP` pour `PR` |
+| Libellé | Début du titre du rendez-vous | `Exploitation` → « Exploitation — Sophien » |
+| Mode | **Par site** : catégorie et lieu suivent le site du collaborateur (titre « Proxi NTS — Sophien »). **Fixe** : catégorie et lieu propres au code | `PR` par site, `EXPL` fixe |
+| Catégorie, Lieu | Pour un code fixe uniquement | `Catégorie verte`, `EFS` |
+| Début, Fin | Horaires propres au code ; vides = horaires par défaut | `08:00` à `18:00` |
+| 1/jour | Signale une incohérence si deux collaborateurs ont ce code le même jour (par site pour un code « par site ») | coché pour `PR` et `EXPL` |
+
+Une cellule peut contenir plusieurs codes séparés par `/` (ex. `PR/EXPL`) : un rendez-vous est créé pour chacun.
+Les valeurs inconnues (PS93, BF93…) sont ignorées.
+
+Attention : changer le libellé d'un code change le titre des rendez-vous. La détection des doublons
+se fait sur le titre ; les rendez-vous déjà importés avec l'ancien libellé ne seront plus reconnus.
 
 ## Mode autonome
 

@@ -136,6 +136,12 @@
     padding: 2px 8px; border-radius: 12px; white-space: nowrap;
   }
   .tag-expl { background: var(--green-light);  color: var(--green); }
+  .tag-rouge { background: var(--red-light);   color: var(--red); }
+  .tag-autre { background: var(--gray-light);  color: var(--gray); }
+  .leg-rouge { background: var(--red-light);  color: var(--red); }
+  .leg-rouge .legend-dot { background: var(--red); }
+  .leg-autre { background: var(--gray-light); color: var(--gray); }
+  .leg-autre .legend-dot { background: var(--gray); }
   .tag-tou  { background: var(--blue-light);    color: var(--blue); }
   .tag-ang  { background: var(--purple-light);  color: var(--purple); }
   .tag-nts  { background: var(--orange-light);  color: var(--orange); }
@@ -303,6 +309,16 @@
     border: 1px solid var(--border); border-radius: var(--radius);
     font-size: 0.8rem; display: none;
   }
+  .codes-editor td { padding: 0.3rem 0.3rem; vertical-align: middle; }
+  .codes-editor input[type=text], .codes-editor select { font-size: 0.8rem; padding: 0.3rem 0.35rem; }
+  .codes-editor input[type=time] { font-size: 0.75rem; padding: 0.3rem 0.1rem; }
+  .codes-editor select { padding-left: 0.2rem; padding-right: 0; }
+  .codes-editor input:disabled { background: var(--bg); color: var(--text-muted); }
+  .code-chip {
+    display: flex; align-items: center; gap: 0.4rem; border-radius: 6px; padding: 0.35rem 0.7rem;
+  }
+  .code-chip .code { font-family: monospace; font-weight: 700; font-size: 0.85rem; }
+  .code-chip .desc { font-size: 0.75rem; }
   .log-outlook div { padding: 0.3rem 0.75rem; border-bottom: 1px solid var(--border); }
   .log-outlook .l-ok   { color: var(--green); }
   .log-outlook .l-skip { color: var(--text-muted); }
@@ -339,7 +355,8 @@
     <div class="format-hint">
       <strong>Structure attendue du tableau :</strong>
       Colonnes <code>Région</code> · <code>Site</code> · <code>Nom Personne</code> puis les dates en entête (ex. <code>08-juin</code>).
-      Les cellules contiennent <code>PR</code>, <code>PRCP</code> (Proxi), <code>EXPL</code> (Exploitation) ou sont vides.
+      Les cellules contiennent <span id="hint-codes"></span> ou sont vides.
+      Plusieurs codes peuvent être séparés par <code>/</code> (ex. <code>PR/EXPL</code>).
       Les autres codes (PS93, BF93…) sont ignorés automatiquement.
     </div>
     <div class="param-grid" style="margin:0.75rem 0 0;grid-template-columns:minmax(180px,240px) 1fr;align-items:end;">
@@ -366,28 +383,7 @@
 
     <!-- Codes reconnus -->
     <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.6rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Codes reconnus dans le fichier</p>
-    <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:1.25rem;">
-      <div style="display:flex;align-items:center;gap:0.4rem;background:var(--green-light);border:1px solid #A5D6A7;border-radius:6px;padding:0.35rem 0.7rem;">
-        <span style="font-family:monospace;font-weight:700;color:var(--green);font-size:0.85rem;">EXPL</span>
-        <span style="font-size:0.75rem;color:var(--green);">Exploitation</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:0.4rem;background:var(--blue-light);border:1px solid #90CAF9;border-radius:6px;padding:0.35rem 0.7rem;">
-        <span style="font-family:monospace;font-weight:700;color:var(--blue);font-size:0.85rem;">PR</span>
-        <span style="font-size:0.75rem;color:var(--blue);">Proxi</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:0.4rem;background:var(--blue-light);border:1px solid #90CAF9;border-radius:6px;padding:0.35rem 0.7rem;">
-        <span style="font-family:monospace;font-weight:700;color:var(--blue);font-size:0.85rem;">PRCP</span>
-        <span style="font-size:0.75rem;color:var(--blue);">Proxi (alias PR)</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:0.4rem;background:var(--blue-light);border:1px solid #90CAF9;border-radius:6px;padding:0.35rem 0.7rem;">
-        <span style="font-family:monospace;font-weight:700;color:var(--blue);font-size:0.85rem;">PR/EXPL</span>
-        <span style="font-size:0.75rem;color:var(--blue);">2 événements le même jour</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:0.4rem;background:var(--blue-light);border:1px solid #90CAF9;border-radius:6px;padding:0.35rem 0.7rem;">
-        <span style="font-family:monospace;font-weight:700;color:var(--blue);font-size:0.85rem;">EXPL/PR</span>
-        <span style="font-size:0.75rem;color:var(--blue);">2 événements le même jour</span>
-      </div>
-    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:1.25rem;" id="codes-reconnus"></div>
 
     <!-- Catégories -->
     <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.6rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Correspondance catégories Outlook</p>
@@ -399,7 +395,7 @@
 
     <!-- Éditeur de configuration -->
     <details class="config" id="config-details">
-      <summary>⚙️ Modifier la configuration (collaborateurs, horaires, catégories)</summary>
+      <summary>⚙️ Modifier la configuration (collaborateurs, codes, horaires, catégories)</summary>
 
       <p class="section-title">Collaborateurs</p>
       <div class="table-wrapper" style="max-height:none;">
@@ -420,18 +416,46 @@
         <button class="btn btn-secondary btn-sm" onclick="ajouterCollaborateur()">＋ Ajouter un collaborateur</button>
       </div>
 
-      <p class="section-title" style="margin-top:1.25rem;">Horaires des événements</p>
+      <p class="section-title" style="margin-top:1.25rem;">Codes reconnus dans le fichier</p>
+      <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.5rem;">
+        <strong>Par site</strong> : la catégorie et le lieu suivent le site du collaborateur (ex. PR → « Proxi NTS »).
+        <strong>Fixe</strong> : catégorie et lieu propres au code (ex. EXPL → « Exploitation »).
+        Horaires vides = horaires par défaut ci-dessous.
+      </p>
+      <div class="table-wrapper" style="max-height:none;overflow-x:auto;">
+        <table class="codes-editor">
+          <thead>
+            <tr>
+              <th style="width:9%">Code</th>
+              <th style="width:10%">Variantes <small>(;)</small></th>
+              <th style="width:14%">Libellé (titre)</th>
+              <th style="width:12%">Mode</th>
+              <th style="width:17%">Catégorie Outlook</th>
+              <th style="width:11%">Lieu</th>
+              <th style="width:9%">Début</th>
+              <th style="width:9%">Fin</th>
+              <th title="Signaler une incohérence si deux collaborateurs ont ce code le même jour (par site si mode « Par site »)">1/jour</th>
+              <th style="width:34px"></th>
+            </tr>
+          </thead>
+          <tbody id="codes-editor-body"></tbody>
+        </table>
+      </div>
+      <div class="actions" style="margin-top:0.5rem;">
+        <button class="btn btn-secondary btn-sm" onclick="ajouterCode()">＋ Ajouter un code</button>
+      </div>
+
+      <p class="section-title" style="margin-top:1.25rem;">Horaires par défaut des événements</p>
       <div class="param-grid">
         <div><label for="cfg-debut">Heure de début</label><input type="time" id="cfg-debut"></div>
         <div><label for="cfg-fin">Heure de fin</label><input type="time" id="cfg-fin"></div>
       </div>
 
-      <p class="section-title">Nom exact des catégories Outlook</p>
+      <p class="section-title">Catégories Outlook des codes « par site »</p>
       <div class="param-grid">
-        <div><label for="cfg-cat-EXPL">EXPL</label><input type="text" id="cfg-cat-EXPL"></div>
-        <div><label for="cfg-cat-TOU">Proxi Tours</label><input type="text" id="cfg-cat-TOU"></div>
-        <div><label for="cfg-cat-ANG">Proxi Angers</label><input type="text" id="cfg-cat-ANG"></div>
-        <div><label for="cfg-cat-NTS">Proxi Nantes</label><input type="text" id="cfg-cat-NTS"></div>
+        <div><label for="cfg-cat-TOU">Tours</label><input type="text" id="cfg-cat-TOU"></div>
+        <div><label for="cfg-cat-ANG">Angers</label><input type="text" id="cfg-cat-ANG"></div>
+        <div><label for="cfg-cat-NTS">Nantes</label><input type="text" id="cfg-cat-NTS"></div>
       </div>
 
       <div id="config-msg"></div>
@@ -563,12 +587,17 @@ const CONFIG_DEFAUT = {
   calendrier: '\\\\Cpdl.ServiceInformatique\\Calendrier',
   heureDebut: '09:00',
   heureFin: '16:00',
+  /* Catégories des codes « par site » */
   categories: {
-    EXPL: 'Catégorie verte',
     TOU:  'Catégorie bleue',
     ANG:  'Catégorie violette',
     NTS:  'Catégorie orange',
   },
+  /* Codes reconnus dans les cellules du planning */
+  codes: [
+    { code: 'PR',   variantes: ['PRCP'], libelle: 'Proxi',        mode: 'site', categorie: '',                lieu: '',    heureDebut: '', heureFin: '', unique: true },
+    { code: 'EXPL', variantes: [],       libelle: 'Exploitation', mode: 'fixe', categorie: 'Catégorie verte', lieu: 'EFS', heureDebut: '', heureFin: '', unique: true },
+  ],
   equipe: [
     { nom: 'BECAVIN Florent',    site: 'NTS', email: 'florent.becavin@efs.sante.fr',  alias: [] },
     { nom: 'KOIBICH Sophien',    site: 'NTS', email: 'sophien.koibich@efs.sante.fr',  alias: ['KOIBICH Sophie', 'KOIBITCH Sophien'] },
@@ -590,6 +619,8 @@ const SITES = {
 let CONFIG = structuredClone(CONFIG_DEFAUT);
 let TEAM = {};         /* nom canonique → { site, email } (reconstruit depuis CONFIG) */
 let NAME_ALIASES = {}; /* nom canonique → [variantes] */
+let CODE_INDEX = {};   /* code ou variante (majuscules) → définition du code */
+const CLASSES_FIXES = ['tag-expl', 'tag-rouge', 'tag-autre'];
 let allEvents = [];
 let lastWorkbook = null;
 
@@ -622,6 +653,25 @@ function fusionnerConfig(brute) {
   if (brute.categories) for (const k of Object.keys(c.categories)) {
     if (typeof brute.categories[k] === 'string' && brute.categories[k].trim()) c.categories[k] = brute.categories[k].trim();
   }
+  const heure = h => (/^\d{2}:\d{2}$/.test(h) ? h : '');
+  if (Array.isArray(brute.codes)) {
+    c.codes = brute.codes
+      .filter(k => k && String(k.code || '').trim())
+      .map(k => ({
+        code: String(k.code).trim().toUpperCase(),
+        variantes: Array.isArray(k.variantes) ? k.variantes.map(v => String(v).trim().toUpperCase()).filter(Boolean) : [],
+        libelle: String(k.libelle || k.code).trim(),
+        mode: k.mode === 'site' ? 'site' : 'fixe',
+        categorie: String(k.categorie || '').trim(),
+        lieu: String(k.lieu || '').trim(),
+        heureDebut: heure(k.heureDebut),
+        heureFin: heure(k.heureFin),
+        unique: k.unique !== false,
+      }));
+  } else if (brute.categories && typeof brute.categories.EXPL === 'string' && brute.categories.EXPL.trim()) {
+    /* Ancienne configuration : la catégorie EXPL était rangée avec celles des sites */
+    c.codes.find(k => k.code === 'EXPL').categorie = brute.categories.EXPL.trim();
+  }
   if (Array.isArray(brute.equipe)) {
     c.equipe = brute.equipe
       .filter(p => p && p.nom && SITES[p.site])
@@ -643,7 +693,13 @@ function appliquerConfig(c) {
     TEAM[p.nom] = { site: p.site, email: p.email };
     if (p.alias.length) NAME_ALIASES[p.nom] = p.alias;
   }
+  CODE_INDEX = {};
+  CONFIG.codes.forEach((k, i) => {
+    k.tagClass = k.mode === 'site' ? null : CLASSES_FIXES[Math.min(i, CLASSES_FIXES.length - 1)];
+    for (const v of [k.code, ...k.variantes]) CODE_INDEX[v.toUpperCase()] = k;
+  });
   renderTeamList();
+  renderCodes();
   renderLegendCategories();
   remplirFormulaireConfig();
 }
@@ -787,6 +843,13 @@ function toggleDiag() {
     box.style.display = 'none';
     toggle.textContent = '🔍 Afficher le diagnostic';
   }
+}
+
+/* ── Codes d'une cellule (« PR/EXPL » → deux codes), d'après la configuration ── */
+function codesCellule(valeur) {
+  const raw = valeur == null ? '' : valeur.toString().trim().toUpperCase();
+  if (!raw) return [];
+  return raw.split('/').map(t => CODE_INDEX[t.trim()]).filter(Boolean);
 }
 
 /* ── Parser le fichier ── */
@@ -935,10 +998,9 @@ function parseWorkbook(wb) {
 
       const canonicalName = normalizeName(rawName);
       if (!canonicalName) {
-        const hasPR   = row.some(c => /\bPR\b/.test(c.toString().trim()));
-        const hasEXPL = row.some(c => /\bEXPL\b/.test(c.toString().trim()));
-        if (hasPR || hasEXPL) {
-          diagLog('warn', `  Ligne ${i+1} : nom non reconnu "${rawName}" (a des PR/EXPL)`);
+        const aDesCodes = dateColumns.some(dc => codesCellule(row[dc.col]).length);
+        if (aDesCodes) {
+          diagLog('warn', `  Ligne ${i+1} : nom non reconnu "${rawName}" (contient des codes reconnus)`);
           errors.push(`Ligne ${i+1} ignorée : nom "${rawName}" non reconnu dans la configuration.`);
         }
         continue;
@@ -947,21 +1009,21 @@ function parseWorkbook(wb) {
       const person = TEAM[canonicalName];
 
       for (const dc of dateColumns) {
-        const raw = row[dc.col] ? row[dc.col].toString().trim() : '';
-        const normalized = raw.replace(/\bPRCP\b/g, 'PR');
-        const tokens = normalized.split('/').map(t => t.trim()).filter(t => t === 'PR' || t === 'EXPL');
-        if (!tokens.length) continue;
-
-        for (const cell of tokens) {
+        for (const k of codesCellule(row[dc.col])) {
           let type, category, location, tagClass;
-          if (cell === 'EXPL') {
-            type = 'EXPL'; category = CONFIG.categories.EXPL; location = 'EFS'; tagClass = 'tag-expl';
-          } else {
+          if (k.mode === 'site') {
             const site = SITES[person.site];
-            type = `PROXY ${person.site}`; category = CONFIG.categories[person.site];
+            type = `${k.libelle} ${person.site}`; category = CONFIG.categories[person.site];
             location = site.location; tagClass = site.cls;
+          } else {
+            type = k.libelle; category = k.categorie; location = k.lieu; tagClass = k.tagClass;
           }
-          events.push({ name: canonicalName, date: new Date(dc.date), type, category, location, tagClass, email: person.email, site: person.site });
+          events.push({
+            name: canonicalName, date: new Date(dc.date), code: k.code, type, category, location, tagClass,
+            email: person.email, site: person.site, unique: k.unique,
+            heureDebut: k.heureDebut || CONFIG.heureDebut,
+            heureFin:   k.heureFin   || CONFIG.heureFin,
+          });
           eventsInSheet++;
         }
       }
@@ -1016,7 +1078,7 @@ function isJourOuvre(date) {
 
 /* ── Détecter les incohérences ── */
 function detectIncoherences(events) {
-  const issues = { weekend: [], ferie: [], doublePR: [], doubleEXPL: [] };
+  const issues = { weekend: [], ferie: [], doublons: [] };
 
   // Regrouper par date
   const byDate = {};
@@ -1039,24 +1101,15 @@ function detectIncoherences(events) {
       else if (isFerie) issues.ferie.push({ label, name: e.name, type: e.type });
     }
 
-    // Règle 2 : plusieurs PR sur le même site le même jour
-    const prBySite = {};
+    // Règle 2 : un code « 1 par jour » porté par plusieurs collaborateurs
+    // (le type inclut le site pour les codes « par site » : « Proxi NTS »)
+    const parType = {};
     for (const e of evts) {
-      if (e.type.startsWith('PROXY')) {
-        if (!prBySite[e.type]) prBySite[e.type] = [];
-        prBySite[e.type].push(e.name);
-      }
+      if (!e.unique) continue;
+      (parType[e.type] ||= []).push(e.name);
     }
-    for (const [siteType, names] of Object.entries(prBySite)) {
-      if (names.length > 1) {
-        issues.doublePR.push({ label, site: siteType, names });
-      }
-    }
-
-    // Règle 3 : plusieurs EXPL le même jour
-    const expls = evts.filter(e => e.type === 'EXPL');
-    if (expls.length > 1) {
-      issues.doubleEXPL.push({ label, names: expls.map(e => e.name) });
+    for (const [type, names] of Object.entries(parType)) {
+      if (names.length > 1) issues.doublons.push({ label, type, names });
     }
   }
 
@@ -1066,8 +1119,7 @@ function detectIncoherences(events) {
 /* ── Afficher les incohérences ── */
 function renderIncoherences(events) {
   const issues = detectIncoherences(events);
-  const total = issues.weekend.length + issues.ferie.length +
-                issues.doublePR.length + issues.doubleEXPL.length;
+  const total = issues.weekend.length + issues.ferie.length + issues.doublons.length;
 
   const card = document.getElementById('inc-card');
   const badge = document.getElementById('inc-badge');
@@ -1089,8 +1141,8 @@ function renderIncoherences(events) {
     for (const i of issues.weekend) {
       html += `<div class="inc-row">
         <span class="inc-date">${i.label}</span>
-        <span class="inc-who">${i.name.split(' ').slice(-1)[0]}</span>
-        <span class="inc-tag">${i.type}</span>
+        <span class="inc-who">${esc(i.name.split(' ').slice(-1)[0])}</span>
+        <span class="inc-tag">${esc(i.type)}</span>
       </div>`;
     }
     html += '</div>';
@@ -1102,34 +1154,21 @@ function renderIncoherences(events) {
     for (const i of issues.ferie) {
       html += `<div class="inc-row">
         <span class="inc-date">${i.label}</span>
-        <span class="inc-who">${i.name.split(' ').slice(-1)[0]}</span>
-        <span class="inc-tag">${i.type}</span>
+        <span class="inc-who">${esc(i.name.split(' ').slice(-1)[0])}</span>
+        <span class="inc-tag">${esc(i.type)}</span>
       </div>`;
     }
     html += '</div>';
   }
 
-  if (issues.doublePR.length) {
+  if (issues.doublons.length) {
     html += `<div class="inc-group">
-      <div class="inc-group-title">⚠️ Plusieurs PR sur le même site le même jour (${issues.doublePR.length})</div>`;
-    for (const i of issues.doublePR) {
+      <div class="inc-group-title">⚠️ Même code pour plusieurs collaborateurs le même jour (${issues.doublons.length})</div>`;
+    for (const i of issues.doublons) {
       html += `<div class="inc-row">
         <span class="inc-date">${i.label}</span>
-        <span class="inc-who">${i.names.map(n => n.split(' ').slice(-1)[0]).join(', ')}</span>
-        <span class="inc-tag">${i.site}</span>
-      </div>`;
-    }
-    html += '</div>';
-  }
-
-  if (issues.doubleEXPL.length) {
-    html += `<div class="inc-group">
-      <div class="inc-group-title">⚠️ Plusieurs EXPL le même jour (${issues.doubleEXPL.length})</div>`;
-    for (const i of issues.doubleEXPL) {
-      html += `<div class="inc-row">
-        <span class="inc-date">${i.label}</span>
-        <span class="inc-who">${i.names.map(n => n.split(' ').slice(-1)[0]).join(', ')}</span>
-        <span class="inc-tag">EXPL</span>
+        <span class="inc-who">${i.names.map(n => esc(n.split(' ').slice(-1)[0])).join(', ')}</span>
+        <span class="inc-tag">${esc(i.type)}</span>
       </div>`;
     }
     html += '</div>';
@@ -1146,19 +1185,23 @@ function toggleInc() {
 }
 
 /* ── Afficher les stats ── */
+const COULEUR_TAG = {
+  'tag-expl': 'green', 'tag-tou': 'blue', 'tag-ang': 'purple', 'tag-nts': 'orange',
+  'tag-rouge': 'red', 'tag-autre': 'gray',
+};
+
 function renderStats(events) {
-  const counts = {};
-  for (const e of events) { counts[e.type] = (counts[e.type]||0) + 1; }
-  const grid = document.getElementById('stats-grid');
-  const defs = [
-    { key: 'EXPL',      label: 'Exploitation',  cls: 'tag-expl' },
-    { key: 'PROXY TOU', label: 'Proxi Tours',    cls: 'tag-tou'  },
-    { key: 'PROXY ANG', label: 'Proxi Angers',   cls: 'tag-ang'  },
-    { key: 'PROXY NTS', label: 'Proxi Nantes',   cls: 'tag-nts'  },
-  ];
-  grid.innerHTML = [
+  /* Une tuile par type présent (« Exploitation », « Proxi NTS »…), dans l'ordre d'apparition */
+  const parType = new Map();
+  for (const e of events) {
+    const t = parType.get(e.type) || { n: 0, cls: e.tagClass };
+    t.n++;
+    parType.set(e.type, t);
+  }
+  document.getElementById('stats-grid').innerHTML = [
     `<div class="stat"><div class="num">${events.length}</div><div class="lbl">Total événements</div></div>`,
-    ...defs.map(d => `<div class="stat"><div class="num" style="color:var(--${d.cls.replace('tag-','').replace('expl','green').replace('tou','blue').replace('ang','purple').replace('nts','orange')})">${counts[d.key]||0}</div><div class="lbl">${d.label}</div></div>`)
+    ...[...parType].map(([type, t]) =>
+      `<div class="stat"><div class="num" style="color:var(--${COULEUR_TAG[t.cls] || 'gray'})">${t.n}</div><div class="lbl">${esc(type)}</div></div>`)
   ].join('');
 }
 
@@ -1173,8 +1216,8 @@ function renderTable(events) {
     <tr>
       <td style="font-weight:500">${esc(e.name)}</td>
       <td>${e.date.toLocaleDateString('fr-FR', {weekday:'short', day:'2-digit', month:'short', year:'numeric'})}</td>
-      <td><span class="tag ${e.tagClass}">${e.type}</span></td>
-      <td>${e.location}</td>
+      <td><span class="tag ${e.tagClass}">${esc(e.type)}</span></td>
+      <td>${esc(e.location)}</td>
       <td style="color:var(--text-muted);font-size:0.78rem">${esc(e.email) || '<span style="color:var(--red)">email manquant</span>'}</td>
     </tr>
   `).join('');
@@ -1185,7 +1228,7 @@ function setupFilters(events) {
   const bar = document.getElementById('filter-bar');
   const types = ['Tous', ...new Set(events.map(e => e.type))];
   bar.innerHTML = types.map((t, i) =>
-    `<button class="filter-btn ${i===0?'active':''}" onclick="filterEvents('${t}', this)">${t}</button>`
+    `<button class="filter-btn ${i===0?'active':''}" data-type="${esc(t)}" onclick="filterEvents(this.dataset.type, this)">${esc(t)}</button>`
   ).join('');
 }
 
@@ -1203,10 +1246,9 @@ function heureMinute(hhmm) {
 }
 
 function sujetEvenement(e) {
-  const label     = e.type === 'EXPL' ? 'Exploitation' : `Proxi ${e.site}`;
   const parts     = e.name.split(' ');
   const firstName = parts[parts.length - 1];
-  return `${label} — ${firstName}`;
+  return `${e.type} — ${firstName}`;
 }
 
 /* Date locale au format ISO sans fuseau (interprétée comme heure locale par PowerShell) */
@@ -1230,9 +1272,9 @@ function buildICS(events) {
     'X-WR-TIMEZONE:Europe/Paris',
   ];
 
-  const debut = heureMinute(CONFIG.heureDebut);
-  const fin   = heureMinute(CONFIG.heureFin);
   for (const e of events) {
+    const debut = heureMinute(e.heureDebut);
+    const fin   = heureMinute(e.heureFin);
     const dtstart = icsDate(e.date, debut.h, debut.m);
     const dtend   = icsDate(e.date, fin.h, fin.m);
     const summary = sujetEvenement(e);
@@ -1245,7 +1287,7 @@ function buildICS(events) {
     lines.push(`SUMMARY:${icsEscape(summary)}`);
     lines.push(`LOCATION:${icsEscape(e.location)}`);
     lines.push('DESCRIPTION:');
-    lines.push(`CATEGORIES:${icsEscape(e.category)}`);
+    if (e.category) lines.push(`CATEGORIES:${icsEscape(e.category)}`);
     /* Invité obligatoire sans option de réponse */
     if (e.email) lines.push(`ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;RSVP=FALSE;CN="${e.name.replace(/"/g, '')}":mailto:${e.email}`);
     /* Pas de demande de réponse */
@@ -1317,7 +1359,7 @@ function analyserClasseur(wb) {
     msgHtml += `<div class="alert alert-error">⚠️ Email manquant pour : ${sansEmail.map(esc).join(', ')}. Ces événements seront créés sans participant obligatoire.</div>`;
   }
   if (events.length === 0) {
-    msgHtml += '<div class="alert alert-info">ℹ️ Aucun événement PR ou EXPL trouvé. Vérifiez la structure du fichier.</div>';
+    msgHtml += `<div class="alert alert-info">ℹ️ Aucun événement trouvé (codes recherchés : ${CONFIG.codes.map(k => esc(k.code)).join(', ')}). Vérifiez la structure du fichier ou la configuration des codes.</div>`;
   } else {
     msgHtml += `<div class="alert alert-success">✅ ${events.length} événement(s) prêt(s) à exporter.</div>`;
   }
@@ -1390,11 +1432,27 @@ function renderTeamList() {
 }
 
 function renderLegendCategories() {
-  const c = CONFIG.categories;
-  document.getElementById('legend-categories').innerHTML = `
-    <div class="legend-item leg-expl"><div class="legend-dot"></div>EXPL → ${esc(c.EXPL)}</div>
-    ${Object.entries(SITES).map(([code, s]) =>
-      `<div class="legend-item ${s.legend}"><div class="legend-dot"></div>PROXY ${code} → ${esc(c[code])}</div>`).join('')}`;
+  const parSite = CONFIG.codes.filter(k => k.mode === 'site').map(k => esc(k.code)).join(', ');
+  const fixes = CONFIG.codes.filter(k => k.mode === 'fixe').map(k => {
+    const leg = { 'tag-expl': 'leg-expl', 'tag-rouge': 'leg-rouge', 'tag-autre': 'leg-autre' }[k.tagClass];
+    return `<div class="legend-item ${leg}"><div class="legend-dot"></div>${esc(k.code)} → ${esc(k.categorie || 'sans catégorie')}</div>`;
+  });
+  const sites = parSite ? Object.entries(SITES).map(([code, st]) =>
+    `<div class="legend-item ${st.legend}"><div class="legend-dot"></div>${parSite} ${code} → ${esc(CONFIG.categories[code])}</div>`) : [];
+  document.getElementById('legend-categories').innerHTML = [...fixes, ...sites].join('');
+}
+
+/* ── Affichage des codes reconnus (encart et aide de l'étape 1) ── */
+function renderCodes() {
+  document.getElementById('codes-reconnus').innerHTML = CONFIG.codes.map(k => {
+    const couleur = k.mode === 'site' ? 'blue' : (COULEUR_TAG[k.tagClass] || 'gray');
+    const detail = k.mode === 'site' ? `${k.libelle} (par site)` : k.libelle;
+    const variantes = k.variantes.length ? ` · aussi ${k.variantes.join(', ')}` : '';
+    return `<div class="code-chip" style="background:var(--${couleur}-light);color:var(--${couleur});border:1px solid var(--border);">
+      <span class="code">${esc(k.code)}</span><span class="desc">${esc(detail + variantes)}</span></div>`;
+  }).join('') || '<p style="font-size:0.83rem;color:var(--red)">Aucun code configuré : aucun événement ne sera créé.</p>';
+  document.getElementById('hint-codes').innerHTML = CONFIG.codes.map(k =>
+    [k.code, ...k.variantes].map(v => `<code>${esc(v)}</code>`).join(', ') + ` (${esc(k.libelle)})`).join(', ');
 }
 
 /* ── Éditeur de configuration ── */
@@ -1411,7 +1469,43 @@ function ligneCollaborateur(p) {
     </tr>`;
 }
 
+function ligneCode(k) {
+  const fixe = k.mode === 'fixe';
+  return `
+    <tr>
+      <td><input type="text" data-champ="code" value="${esc(k.code)}" placeholder="Code" style="text-transform:uppercase"></td>
+      <td><input type="text" data-champ="variantes" value="${esc(k.variantes.join('; '))}" placeholder="aucune" style="text-transform:uppercase"></td>
+      <td><input type="text" data-champ="libelle" value="${esc(k.libelle)}" placeholder="Titre"></td>
+      <td><select data-champ="mode" onchange="basculerModeCode(this)">
+        <option value="site" ${fixe ? '' : 'selected'}>Par site</option>
+        <option value="fixe" ${fixe ? 'selected' : ''}>Fixe</option>
+      </select></td>
+      <td><input type="text" data-champ="categorie" value="${esc(k.categorie)}" placeholder="${fixe ? 'aucune' : 'selon le site'}" ${fixe ? '' : 'disabled'}></td>
+      <td><input type="text" data-champ="lieu" value="${esc(k.lieu)}" placeholder="${fixe ? 'aucun' : 'selon le site'}" ${fixe ? '' : 'disabled'}></td>
+      <td><input type="time" data-champ="heureDebut" value="${esc(k.heureDebut)}"></td>
+      <td><input type="time" data-champ="heureFin" value="${esc(k.heureFin)}"></td>
+      <td style="text-align:center"><input type="checkbox" data-champ="unique" ${k.unique ? 'checked' : ''}></td>
+      <td><button class="btn-icon" title="Supprimer" onclick="this.closest('tr').remove()">✕</button></td>
+    </tr>`;
+}
+
+function basculerModeCode(select) {
+  const fixe = select.value === 'fixe';
+  for (const champ of ['categorie', 'lieu']) {
+    const input = select.closest('tr').querySelector(`[data-champ="${champ}"]`);
+    input.disabled = !fixe;
+    input.placeholder = fixe ? (champ === 'lieu' ? 'aucun' : 'aucune') : 'selon le site';
+  }
+}
+
+function ajouterCode() {
+  const tbody = document.getElementById('codes-editor-body');
+  tbody.insertAdjacentHTML('beforeend', ligneCode({ code: '', variantes: [], libelle: '', mode: 'fixe', categorie: '', lieu: '', heureDebut: '', heureFin: '', unique: true }));
+  tbody.lastElementChild.querySelector('input').focus();
+}
+
 function remplirFormulaireConfig() {
+  document.getElementById('codes-editor-body').innerHTML = CONFIG.codes.map(ligneCode).join('');
   document.getElementById('team-editor-body').innerHTML = CONFIG.equipe.map(ligneCollaborateur).join('');
   document.getElementById('cfg-debut').value = CONFIG.heureDebut;
   document.getElementById('cfg-fin').value   = CONFIG.heureFin;
@@ -1454,7 +1548,35 @@ function lireFormulaireConfig() {
     categories[k] = document.getElementById(`cfg-cat-${k}`).value.trim() || CONFIG_DEFAUT.categories[k];
   }
 
-  return { erreurs, config: { ...CONFIG, heureDebut, heureFin, categories, equipe } };
+  /* Codes : chaque valeur (code ou variante) ne doit désigner qu'un seul code */
+  const codes = [];
+  const valeursVues = new Map();
+  document.querySelectorAll('#codes-editor-body tr').forEach((tr, i) => {
+    const val = champ => tr.querySelector(`[data-champ="${champ}"]`).value.trim();
+    const code = val('code').toUpperCase();
+    if (!code) { if (val('libelle')) erreurs.push(`Code ligne ${i+1} : le code est obligatoire.`); return; }
+    const variantes = val('variantes').split(';').map(v => v.trim().toUpperCase()).filter(Boolean);
+    for (const v of [code, ...variantes]) {
+      if (v.includes('/')) erreurs.push(`Code « ${v} » : le caractère / est réservé à la séparation des codes.`);
+      if (valeursVues.has(v)) erreurs.push(`« ${v} » est utilisé par deux codes (${valeursVues.get(v)} et ${code}).`);
+      valeursVues.set(v, code);
+    }
+    const heureDebut = val('heureDebut'), heureFin = val('heureFin');
+    if ((heureDebut && !heureFin) || (!heureDebut && heureFin) || (heureDebut && heureDebut >= heureFin)) {
+      erreurs.push(`Code ${code} : renseignez les deux horaires (début avant fin) ou aucun.`);
+    }
+    const mode = val('mode');
+    codes.push({
+      code, variantes, libelle: val('libelle') || code, mode,
+      categorie: mode === 'fixe' ? val('categorie') : '',
+      lieu: mode === 'fixe' ? val('lieu') : '',
+      heureDebut, heureFin,
+      unique: tr.querySelector('[data-champ="unique"]').checked,
+    });
+  });
+  if (!codes.length) erreurs.push('Configurez au moins un code.');
+
+  return { erreurs, config: { ...CONFIG, heureDebut, heureFin, categories, codes, equipe } };
 }
 
 function messageConfig(html, type) {
@@ -1530,8 +1652,8 @@ async function verifierCalendrier() {
 function evenementsPourOutlook() {
   return allEvents.map(e => ({
     sujet: sujetEvenement(e),
-    debut: isoLocal(e.date, CONFIG.heureDebut),
-    fin:   isoLocal(e.date, CONFIG.heureFin),
+    debut: isoLocal(e.date, e.heureDebut),
+    fin:   isoLocal(e.date, e.heureFin),
     lieu:  e.location,
     categorie: e.category,
     participants: e.email ? [{ nom: e.name, email: e.email }] : [],
