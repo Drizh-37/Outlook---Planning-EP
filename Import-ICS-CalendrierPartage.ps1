@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Import un fichier ICS dans un calendrier Outlook partagé.
 
@@ -37,7 +37,7 @@
         -CheminCalendrier '\\equipe-tours@efs.sante.fr\Calendrier'
 
 .NOTES
-    Version   : 1.1
+    Version   : 1.2
     Auteur    : DSI EFS – Tours
     Date      : Avril 2026
 
@@ -52,6 +52,11 @@
       - Les fuseaux horaires (TZID) sont traités de façon simplifiée (F-11 partiel).
       - Aucune déduplication par UID ICS (F-09).
       - Aucun rollback possible après import (F-08).
+
+    Historique :
+      1.2 : détection des calendriers corrigée (DefaultItemType = 1),
+            prise en compte des ATTENDEE (participants « Obligatoire ») et des CATEGORIES.
+            Pour un import direct depuis Excel, voir Planning-Outlook\Planning-Outlook.ps1.
 #>
 
 [CmdletBinding()]
@@ -78,7 +83,9 @@ $ErrorActionPreference = 'Stop'
 # ──────────────────────────────────────────────────────────────────────────────
 # Constantes Outlook COM
 # ──────────────────────────────────────────────────────────────────────────────
-$OL_FOLDER_CALENDAR  = 9   # olFolderCalendar
+$OL_FOLDER_CALENDAR  = 1   # DefaultItemType d'un dossier Calendrier (olAppointmentItem)
+$OL_MEETING          = 1   # olMeeting
+$OL_REQUIRED         = 1   # olRequired : participant « Obligatoire »
 $OL_APPOINTMENT_ITEM = 1   # olAppointmentItem
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -243,8 +250,17 @@ function Read-ICSFile {
                     $nomPropriete = $Matches[1].ToUpper()
                     $valeur       = $Matches[3]
 
-                    # Stocker la valeur (la dernière occurrence l'emporte pour les doublons simples)
-                    $evenementCourant[$nomPropriete] = $valeur
+                    if ($nomPropriete -eq 'ATTENDEE') {
+                        # Plusieurs participants possibles : on les cumule (adresse sans le préfixe mailto:)
+                        if (-not $evenementCourant.ContainsKey('ATTENDEES')) {
+                            $evenementCourant['ATTENDEES'] = [System.Collections.Generic.List[string]]::new()
+                        }
+                        $evenementCourant['ATTENDEES'].Add(($valeur -replace '^(?i)mailto:', ''))
+                    }
+                    else {
+                        # Stocker la valeur (la dernière occurrence l'emporte pour les doublons simples)
+                        $evenementCourant[$nomPropriete] = $valeur
+                    }
                 }
                 break
             }
@@ -292,7 +308,7 @@ function Show-EvenementSimulation {
 
 Write-Host ''
 Write-Host '╔══════════════════════════════════════════════════════╗' -ForegroundColor DarkCyan
-Write-Host '║   Import ICS  →  Calendrier Outlook partagé  v1.1   ║' -ForegroundColor DarkCyan
+Write-Host '║   Import ICS  →  Calendrier Outlook partagé  v1.2   ║' -ForegroundColor DarkCyan
 Write-Host '║   DSI EFS – Direction des Systèmes d''Information    ║' -ForegroundColor DarkCyan
 Write-Host '╚══════════════════════════════════════════════════════╝' -ForegroundColor DarkCyan
 Write-Host ''
@@ -402,7 +418,7 @@ Write-Host ''
 Write-Host "Lecture du fichier ICS : $CheminICS" -ForegroundColor Gray
 
 try {
-    $evenements = Read-ICSFile -Chemin $CheminICS
+    $evenements = @(Read-ICSFile -Chemin $CheminICS)
 }
 catch {
     Write-Error "Erreur lors de la lecture du fichier ICS : $_"
@@ -470,6 +486,22 @@ foreach ($evt in $evenements) {
         # Description (F-01)
         if ($evt['DESCRIPTION']) {
             $rdv.Body = ConvertFrom-ICSText $evt['DESCRIPTION']
+        }
+
+        # Catégorie Outlook
+        if ($evt['CATEGORIES']) {
+            $rdv.Categories = ConvertFrom-ICSText $evt['CATEGORIES']
+        }
+
+        # Participants « Obligatoire » (sans demande de réponse)
+        if ($evt.ContainsKey('ATTENDEES')) {
+            $rdv.MeetingStatus = $OL_MEETING
+            foreach ($email in $evt['ATTENDEES']) {
+                $destinataire      = $rdv.Recipients.Add($email)
+                $destinataire.Type = $OL_REQUIRED
+            }
+            $null = $rdv.Recipients.ResolveAll()
+            $rdv.ResponseRequested = $false
         }
 
         $rdv.Save()

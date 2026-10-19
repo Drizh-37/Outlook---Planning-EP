@@ -1,0 +1,1609 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Planning CPDL — Outlook</title>
+<style>
+  :root {
+    --blue: #1565C0; --blue-light: #E3F2FD; --blue-mid: #1976D2;
+    --green: #2E7D32; --green-light: #E8F5E9;
+    --orange: #E65100; --orange-light: #FFF3E0;
+    --purple: #6A1B9A; --purple-light: #F3E5F5;
+    --red: #C62828; --red-light: #FFEBEE;
+    --gray: #455A64; --gray-light: #ECEFF1;
+    --border: #CFD8DC; --bg: #F5F7F9; --white: #FFFFFF;
+    --text: #1C2B33; --text-muted: #546E7A;
+    --radius: 8px; --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg); color: var(--text);
+    min-height: 100vh; padding: 0;
+  }
+
+  header {
+    background: var(--blue); color: #fff;
+    padding: 1.25rem 2rem;
+    display: flex; align-items: center; gap: 1rem;
+  }
+  header .logo {
+    background: #fff; color: var(--blue);
+    font-weight: 700; font-size: 0.85rem;
+    padding: 4px 10px; border-radius: 4px; letter-spacing: 0.05em;
+  }
+  header h1 { font-size: 1.25rem; font-weight: 500; }
+  header span { font-size: 0.85rem; opacity: 0.8; margin-left: auto; }
+
+  main { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+  .card {
+    background: var(--white); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 1.5rem; margin-bottom: 1.5rem;
+  }
+
+  .card h2 {
+    font-size: 1rem; font-weight: 600; color: var(--text);
+    margin-bottom: 1rem; padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .card h2 .badge {
+    background: var(--blue-light); color: var(--blue);
+    font-size: 0.7rem; font-weight: 700;
+    padding: 2px 8px; border-radius: 12px;
+  }
+
+  .drop-zone {
+    border: 2px dashed var(--border); border-radius: var(--radius);
+    padding: 2.5rem 1rem; text-align: center;
+    cursor: pointer; transition: all 0.2s;
+    background: var(--bg);
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--blue); background: var(--blue-light);
+  }
+  .drop-zone input[type=file] { display: none; }
+  .drop-zone .icon { font-size: 2rem; margin-bottom: 0.5rem; }
+  .drop-zone p { color: var(--text-muted); font-size: 0.9rem; }
+  .drop-zone strong { color: var(--blue); cursor: pointer; }
+
+  .format-hint {
+    background: var(--gray-light); border-radius: var(--radius);
+    padding: 0.75rem 1rem; margin-top: 0.75rem;
+    font-size: 0.8rem; color: var(--text-muted); line-height: 1.6;
+  }
+  .format-hint code {
+    background: #fff; border: 1px solid var(--border);
+    padding: 1px 5px; border-radius: 3px;
+    font-family: 'Consolas', monospace; font-size: 0.78rem;
+  }
+
+  .legend {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 0.5rem;
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.4rem 0.6rem; border-radius: 5px;
+    font-size: 0.82rem; font-weight: 500;
+  }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .leg-expl { background: var(--green-light); color: var(--green); }
+  .leg-expl .legend-dot { background: var(--green); }
+  .leg-tou  { background: var(--blue-light);   color: var(--blue);   }
+  .leg-tou  .legend-dot { background: var(--blue); }
+  .leg-ang  { background: var(--purple-light);  color: var(--purple); }
+  .leg-ang  .legend-dot { background: var(--purple); }
+  .leg-nts  { background: var(--orange-light);  color: var(--orange); }
+  .leg-nts  .legend-dot { background: var(--orange); }
+
+  #preview-section { display: none; }
+
+  .stats {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.75rem; margin-bottom: 1.25rem;
+  }
+  .stat {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 0.75rem 1rem; text-align: center;
+  }
+  .stat .num { font-size: 1.8rem; font-weight: 700; color: var(--blue); line-height: 1; }
+  .stat .lbl { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+  table {
+    width: 100%; border-collapse: collapse; font-size: 0.83rem;
+  }
+  th {
+    background: var(--bg); color: var(--text-muted);
+    font-weight: 600; text-align: left;
+    padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border);
+    position: sticky; top: 0;
+  }
+  td {
+    padding: 0.45rem 0.75rem; border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg); }
+
+  .tag {
+    display: inline-block; font-size: 0.72rem; font-weight: 600;
+    padding: 2px 8px; border-radius: 12px; white-space: nowrap;
+  }
+  .tag-expl { background: var(--green-light);  color: var(--green); }
+  .tag-tou  { background: var(--blue-light);    color: var(--blue); }
+  .tag-ang  { background: var(--purple-light);  color: var(--purple); }
+  .tag-nts  { background: var(--orange-light);  color: var(--orange); }
+
+  .table-wrapper {
+    max-height: 350px; overflow-y: auto;
+    border: 1px solid var(--border); border-radius: var(--radius);
+  }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.6rem 1.25rem; border-radius: var(--radius);
+    font-size: 0.9rem; font-weight: 500; cursor: pointer;
+    border: none; transition: all 0.15s; text-decoration: none;
+  }
+  .btn-primary {
+    background: var(--blue); color: #fff;
+  }
+  .btn-primary:hover { background: var(--blue-mid); }
+  .btn-secondary {
+    background: var(--white); color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { background: var(--bg); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .actions { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem; }
+
+  .alert {
+    padding: 0.75rem 1rem; border-radius: var(--radius);
+    font-size: 0.85rem; margin-bottom: 1rem;
+    display: flex; align-items: flex-start; gap: 0.5rem;
+  }
+  .alert-error { background: var(--red-light); color: var(--red); border: 1px solid #FFCDD2; }
+  .alert-success { background: var(--green-light); color: var(--green); border: 1px solid #C8E6C9; }
+  .alert-info { background: var(--blue-light); color: var(--blue); border: 1px solid #BBDEFB; }
+
+  .progress {
+    height: 4px; background: var(--border); border-radius: 2px;
+    overflow: hidden; margin-top: 0.5rem;
+  }
+  .progress-bar {
+    height: 100%; background: var(--blue);
+    width: 0%; transition: width 0.3s; border-radius: 2px;
+  }
+
+  .filter-bar {
+    display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem;
+  }
+  .filter-btn {
+    padding: 0.3rem 0.75rem; border-radius: 20px;
+    font-size: 0.78rem; font-weight: 500; cursor: pointer;
+    border: 1px solid var(--border); background: var(--white);
+    color: var(--text-muted); transition: all 0.15s;
+  }
+  .filter-btn.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+
+  #msg { min-height: 1.5rem; }
+
+  .incoherences-card {
+    border: 1px solid #FFCDD2; border-radius: var(--radius);
+    background: #FFF8F8; margin-bottom: 1.5rem; overflow: hidden;
+    display: none;
+  }
+  .incoherences-header {
+    background: #FFEBEE; padding: 0.75rem 1rem;
+    display: flex; align-items: center; gap: 0.5rem;
+    cursor: pointer; user-select: none;
+  }
+  .incoherences-header h3 {
+    font-size: 0.92rem; font-weight: 600; color: var(--red); flex: 1;
+  }
+  .incoherences-header .inc-badge {
+    background: var(--red); color: #fff;
+    font-size: 0.7rem; font-weight: 700;
+    padding: 2px 8px; border-radius: 12px;
+  }
+  .incoherences-header .chevron {
+    font-size: 0.8rem; color: var(--red); transition: transform 0.2s;
+  }
+  .incoherences-header.open .chevron { transform: rotate(180deg); }
+  .incoherences-body { display: none; padding: 0.75rem 1rem 1rem; }
+  .incoherences-body.open { display: block; }
+
+  .inc-group { margin-bottom: 0.75rem; }
+  .inc-group-title {
+    font-size: 0.75rem; font-weight: 700; color: var(--red);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    margin-bottom: 0.35rem;
+  }
+  .inc-row {
+    display: flex; align-items: center; gap: 0.6rem;
+    padding: 0.35rem 0.5rem; border-radius: 5px;
+    background: #fff; border: 1px solid #FFCDD2;
+    margin-bottom: 0.3rem; font-size: 0.82rem;
+  }
+  .inc-date { font-weight: 600; color: var(--text); min-width: 130px; }
+  .inc-who  { color: var(--text-muted); flex: 1; }
+  .inc-tag  {
+    font-size: 0.7rem; font-weight: 700; padding: 1px 7px;
+    border-radius: 10px; background: #FFEBEE; color: var(--red);
+    white-space: nowrap;
+  }
+
+  .diag-box {
+    background: #1e1e2e; color: #cdd6f4;
+    border-radius: var(--radius); padding: 1rem;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.75rem; line-height: 1.6;
+    max-height: 300px; overflow-y: auto;
+    margin-top: 0.75rem; display: none;
+  }
+  .diag-box .ok  { color: #a6e3a1; }
+  .diag-box .warn { color: #f9e2af; }
+  .diag-box .err  { color: #f38ba8; }
+  .diag-toggle {
+    font-size: 0.75rem; color: var(--text-muted);
+    cursor: pointer; text-decoration: underline;
+    margin-top: 0.5rem; display: inline-block;
+  }
+
+  .mode-banner {
+    padding: 0.5rem 2rem; font-size: 0.82rem;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .mode-connecte { background: var(--green-light); color: var(--green); }
+  .mode-autonome { background: var(--orange-light); color: var(--orange); }
+
+  .section-title {
+    font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.6rem;
+    font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+  }
+
+  input[type=text], input[type=email], input[type=time], select {
+    font: inherit; font-size: 0.83rem; color: var(--text);
+    padding: 0.35rem 0.5rem; width: 100%;
+    border: 1px solid var(--border); border-radius: 5px; background: var(--white);
+  }
+  input:focus, select:focus { outline: 2px solid var(--blue-light); border-color: var(--blue); }
+
+  .team-editor td { padding: 0.3rem 0.4rem; }
+  .btn-icon {
+    border: 1px solid var(--border); background: var(--white); color: var(--red);
+    border-radius: 5px; cursor: pointer; padding: 0.3rem 0.55rem; font-size: 0.8rem;
+  }
+  .btn-icon:hover { background: var(--red-light); }
+  .btn-sm { padding: 0.4rem 0.9rem; font-size: 0.82rem; }
+
+  .param-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem; margin-bottom: 1.25rem;
+  }
+  .param-grid label { font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem; }
+
+  details.config > summary {
+    cursor: pointer; font-size: 0.85rem; font-weight: 600; color: var(--blue);
+    margin: 0.75rem 0; user-select: none;
+  }
+
+  .check { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; margin: 0.4rem 0; }
+  .check small { color: var(--text-muted); }
+
+  .log-outlook {
+    max-height: 260px; overflow-y: auto; margin-top: 0.75rem;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    font-size: 0.8rem; display: none;
+  }
+  .log-outlook div { padding: 0.3rem 0.75rem; border-bottom: 1px solid var(--border); }
+  .log-outlook .l-ok   { color: var(--green); }
+  .log-outlook .l-skip { color: var(--text-muted); }
+  .log-outlook .l-err  { color: var(--red); }
+  .log-outlook .l-warn { color: var(--orange); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">EFS</div>
+  <h1>Planning CPDL — Générateur ICS et Outlook</h1>
+  <span>Tours · Angers · Nantes</span>
+</header>
+<div class="mode-banner" id="mode-banner"></div>
+
+<main>
+
+  <!-- Étape 1 : import fichier -->
+  <div class="card">
+    <h2>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Import du fichier Excel
+      <span class="badge">Étape 1</span>
+    </h2>
+
+    <div class="drop-zone" id="drop-zone">
+      <input type="file" id="file-input" accept=".xlsx,.xls,.csv">
+      <div class="icon">📂</div>
+      <p>Glissez votre fichier ici ou <strong onclick="document.getElementById('file-input').click()">parcourez</strong></p>
+      <p style="font-size:0.78rem; margin-top:0.3rem;">Formats acceptés : .xlsx, .xls, .csv</p>
+    </div>
+
+    <div class="format-hint">
+      <strong>Structure attendue du tableau :</strong>
+      Colonnes <code>Région</code> · <code>Site</code> · <code>Nom Personne</code> puis les dates en entête (ex. <code>08-juin</code>).
+      Les cellules contiennent <code>PR</code>, <code>PRCP</code> (Proxi), <code>EXPL</code> (Exploitation) ou sont vides.
+      Les autres codes (PS93, BF93…) sont ignorés automatiquement.
+    </div>
+    <span class="diag-toggle" onclick="toggleDiag()">🔍 Afficher le diagnostic</span>
+    <div class="diag-box" id="diag-box"></div>
+  </div>
+
+  <!-- Légende -->
+  <div class="card">
+    <h2>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Codes traités et correspondances Outlook
+    </h2>
+
+    <!-- Codes reconnus -->
+    <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.6rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Codes reconnus dans le fichier</p>
+    <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:1.25rem;">
+      <div style="display:flex;align-items:center;gap:0.4rem;background:var(--green-light);border:1px solid #A5D6A7;border-radius:6px;padding:0.35rem 0.7rem;">
+        <span style="font-family:monospace;font-weight:700;color:var(--green);font-size:0.85rem;">EXPL</span>
+        <span style="font-size:0.75rem;color:var(--green);">Exploitation</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:0.4rem;background:var(--blue-light);border:1px solid #90CAF9;border-radius:6px;padding:0.35rem 0.7rem;">
+        <span style="font-family:monospace;font-weight:700;color:var(--blue);font-size:0.85rem;">PR</span>
+        <span style="font-size:0.75rem;color:var(--blue);">Proxi</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:0.4rem;background:var(--blue-light);border:1px solid #90CAF9;border-radius:6px;padding:0.35rem 0.7rem;">
+        <span style="font-family:monospace;font-weight:700;color:var(--blue);font-size:0.85rem;">PRCP</span>
+        <span style="font-size:0.75rem;color:var(--blue);">Proxi (alias PR)</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:0.4rem;background:var(--blue-light);border:1px solid #90CAF9;border-radius:6px;padding:0.35rem 0.7rem;">
+        <span style="font-family:monospace;font-weight:700;color:var(--blue);font-size:0.85rem;">PR/EXPL</span>
+        <span style="font-size:0.75rem;color:var(--blue);">2 événements le même jour</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:0.4rem;background:var(--blue-light);border:1px solid #90CAF9;border-radius:6px;padding:0.35rem 0.7rem;">
+        <span style="font-family:monospace;font-weight:700;color:var(--blue);font-size:0.85rem;">EXPL/PR</span>
+        <span style="font-size:0.75rem;color:var(--blue);">2 événements le même jour</span>
+      </div>
+    </div>
+
+    <!-- Catégories -->
+    <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.6rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Correspondance catégories Outlook</p>
+    <div class="legend" style="margin-bottom:1.25rem;" id="legend-categories"></div>
+
+    <!-- Équipe configurée -->
+    <p class="section-title">Collaborateurs configurés</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0.4rem;" id="team-list"></div>
+
+    <!-- Éditeur de configuration -->
+    <details class="config" id="config-details">
+      <summary>⚙️ Modifier la configuration (collaborateurs, horaires, catégories)</summary>
+
+      <p class="section-title">Collaborateurs</p>
+      <div class="table-wrapper" style="max-height:none;">
+        <table class="team-editor">
+          <thead>
+            <tr>
+              <th style="width:24%">Nom (tel qu'écrit dans Excel)</th>
+              <th style="width:12%">Site</th>
+              <th style="width:30%">Email</th>
+              <th>Variantes du nom <small>(séparées par ;)</small></th>
+              <th style="width:40px"></th>
+            </tr>
+          </thead>
+          <tbody id="team-editor-body"></tbody>
+        </table>
+      </div>
+      <div class="actions" style="margin-top:0.5rem;">
+        <button class="btn btn-secondary btn-sm" onclick="ajouterCollaborateur()">＋ Ajouter un collaborateur</button>
+      </div>
+
+      <p class="section-title" style="margin-top:1.25rem;">Horaires des événements</p>
+      <div class="param-grid">
+        <div><label for="cfg-debut">Heure de début</label><input type="time" id="cfg-debut"></div>
+        <div><label for="cfg-fin">Heure de fin</label><input type="time" id="cfg-fin"></div>
+      </div>
+
+      <p class="section-title">Nom exact des catégories Outlook</p>
+      <div class="param-grid">
+        <div><label for="cfg-cat-EXPL">EXPL</label><input type="text" id="cfg-cat-EXPL"></div>
+        <div><label for="cfg-cat-TOU">Proxi Tours</label><input type="text" id="cfg-cat-TOU"></div>
+        <div><label for="cfg-cat-ANG">Proxi Angers</label><input type="text" id="cfg-cat-ANG"></div>
+        <div><label for="cfg-cat-NTS">Proxi Nantes</label><input type="text" id="cfg-cat-NTS"></div>
+      </div>
+
+      <div id="config-msg"></div>
+      <div class="actions">
+        <button class="btn btn-primary btn-sm" onclick="enregistrerConfigDepuisFormulaire()">💾 Enregistrer la configuration</button>
+        <button class="btn btn-secondary btn-sm" onclick="exporterConfig()">⬇️ Exporter (JSON)</button>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('config-file').click()">⬆️ Importer (JSON)</button>
+        <button class="btn btn-secondary btn-sm" onclick="restaurerConfigDefaut()">↺ Valeurs par défaut</button>
+        <input type="file" id="config-file" accept=".json" style="display:none">
+      </div>
+    </details>
+  </div>
+
+  <!-- Incohérences -->
+  <div class="incoherences-card" id="inc-card">
+    <div class="incoherences-header" id="inc-header" onclick="toggleInc()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <h3>Incohérences détectées</h3>
+      <span class="inc-badge" id="inc-badge">0</span>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="incoherences-body" id="inc-body">
+      <div id="inc-content"></div>
+    </div>
+  </div>
+
+  <!-- Prévisualisation + export -->
+  <div id="preview-section">
+    <div class="card">
+      <h2>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        Aperçu des événements détectés
+        <span class="badge" id="badge-count">0 événements</span>
+      </h2>
+
+      <div id="sheet-info" style="display:none;align-items:center;gap:0.5rem;
+           background:var(--green-light);border:1px solid #A5D6A7;border-radius:6px;
+           padding:0.4rem 0.75rem;margin-bottom:0.75rem;font-size:0.82rem;color:var(--green);">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Onglet analysé :&nbsp;<strong id="sheet-name-display"></strong>
+      </div>
+
+      <div id="msg"></div>
+
+      <div class="stats" id="stats-grid"></div>
+
+      <div class="filter-bar" id="filter-bar"></div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Collaborateur</th>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Site</th>
+              <th>Email</th>
+            </tr>
+          </thead>
+          <tbody id="preview-tbody"></tbody>
+        </table>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-primary" id="btn-export" onclick="exportICS()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Télécharger le fichier ICS
+        </button>
+        <button class="btn btn-secondary" onclick="reset()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
+          Recommencer
+        </button>
+      </div>
+    </div>
+
+    <!-- Étape 3 : injection directe dans Outlook (mode connecté uniquement) -->
+    <div class="card" id="outlook-card" style="display:none;">
+      <h2>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Injection dans le calendrier Outlook partagé
+        <span class="badge">Étape 3</span>
+      </h2>
+
+      <div class="param-grid" style="grid-template-columns:1fr auto;align-items:end;">
+        <div>
+          <label for="outlook-calendrier">Calendrier cible</label>
+          <select id="outlook-calendrier"><option value="">Chargement des calendriers…</option></select>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="chargerCalendriers()">↻ Actualiser</button>
+      </div>
+
+      <label class="check">
+        <input type="checkbox" id="outlook-doublons" checked>
+        Ignorer les événements déjà présents <small>(même titre, même date et même heure)</small>
+      </label>
+      <label class="check">
+        <input type="checkbox" id="outlook-envoyer">
+        Envoyer l'invitation aux collaborateurs <small>(sinon, le collaborateur est noté « Obligatoire » sans recevoir de mail)</small>
+      </label>
+
+      <div class="progress" id="outlook-progress" style="display:none;"><div class="progress-bar" id="outlook-progress-bar"></div></div>
+      <div id="outlook-msg" style="margin-top:0.75rem;"></div>
+
+      <div class="actions">
+        <button class="btn btn-secondary" id="btn-simuler" onclick="injecterOutlook(true)">🔍 Simuler</button>
+        <button class="btn btn-primary" id="btn-injecter" onclick="injecterOutlook(false)">📅 Injecter dans Outlook</button>
+      </div>
+      <div class="log-outlook" id="outlook-log"></div>
+    </div>
+  </div>
+
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+
+/* ── Mode de fonctionnement ──
+   Lancée par Planning-Outlook.ps1, la page reçoit un jeton de session
+   (le marqueur ci-dessous est remplacé) et peut piloter Outlook.
+   Ouverte directement depuis le disque, elle fonctionne en mode autonome :
+   export ICS uniquement, configuration gardée dans le navigateur. */
+const JETON = '__JETON_SESSION__';
+const CONNECTE = !JETON.startsWith('__');
+const CLE_STOCKAGE = 'planning-outlook-config';
+
+/* ── Configuration par défaut (modifiable depuis l'interface) ── */
+const CONFIG_DEFAUT = {
+  version: 1,
+  calendrier: '',
+  heureDebut: '09:00',
+  heureFin: '16:00',
+  categories: {
+    EXPL: 'Catégorie verte',
+    TOU:  'Catégorie bleue',
+    ANG:  'Catégorie violette',
+    NTS:  'Catégorie orange',
+  },
+  equipe: [
+    { nom: 'BECAVIN Florent',    site: 'NTS', email: 'florent.becavin@efs.sante.fr',  alias: [] },
+    { nom: 'KOIBICH Sophien',    site: 'NTS', email: 'sophien.koibich@efs.sante.fr',  alias: ['KOIBICH Sophie', 'KOIBITCH Sophien'] },
+    { nom: 'ROUHIER Quentin',    site: 'NTS', email: 'quentin.rouhier@efs.sante.fr',  alias: ['ROUIHIER Quentin'] },
+    { nom: 'CREZE Benoit',       site: 'ANG', email: 'benoit.creze@efs.sante.fr',     alias: ['CRÈZE Benoît', 'CREZE Benoît'] },
+    { nom: 'DE BODARD Emmanuel', site: 'ANG', email: 'emmanuel.DEBODARDDELAJACOPIERE@efs.sante.fr', alias: ['DE BODARD DELAJACOPIERE Emmanuel'] },
+    { nom: 'PERRIN Philippe',    site: 'TOU', email: 'philippe.perrin@efs.sante.fr',  alias: [] },
+    { nom: 'COUSIN Sylvain',     site: 'TOU', email: 'sylvain.cousin@efs.sante.fr',   alias: [] },
+    { nom: 'VENIN Hugo',         site: 'TOU', email: 'hugo.venin@efs.sante.fr',       alias: [] },
+  ],
+};
+
+const SITES = {
+  TOU: { label: 'Tours',  cls: 'tag-tou', legend: 'leg-tou', location: 'Tours (TOU)'  },
+  ANG: { label: 'Angers', cls: 'tag-ang', legend: 'leg-ang', location: 'Angers (ANG)' },
+  NTS: { label: 'Nantes', cls: 'tag-nts', legend: 'leg-nts', location: 'Nantes (NTS)' },
+};
+
+let CONFIG = structuredClone(CONFIG_DEFAUT);
+let TEAM = {};         /* nom canonique → { site, email } (reconstruit depuis CONFIG) */
+let NAME_ALIASES = {}; /* nom canonique → [variantes] */
+let allEvents = [];
+let lastWorkbook = null;
+
+/* ── Échappement HTML (les noms viennent désormais d'une saisie) ── */
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+
+/* ── Appels au serveur local PowerShell ── */
+async function api(chemin, corps) {
+  const options = { method: corps === undefined ? 'GET' : 'POST', headers: { 'X-Jeton': JETON } };
+  if (corps !== undefined) {
+    options.headers['Content-Type'] = 'application/json; charset=utf-8';
+    options.body = typeof corps === 'string' ? corps : JSON.stringify(corps);
+  }
+  const rep = await fetch(chemin, options);
+  const data = await rep.json().catch(() => ({}));
+  if (!rep.ok) throw new Error(data.erreur || `Erreur HTTP ${rep.status}`);
+  return data;
+}
+
+/* ── Chargement / enregistrement de la configuration ── */
+function fusionnerConfig(brute) {
+  const c = structuredClone(CONFIG_DEFAUT);
+  if (!brute || typeof brute !== 'object') return c;
+  if (typeof brute.calendrier === 'string') c.calendrier = brute.calendrier;
+  if (/^\d{2}:\d{2}$/.test(brute.heureDebut)) c.heureDebut = brute.heureDebut;
+  if (/^\d{2}:\d{2}$/.test(brute.heureFin))   c.heureFin   = brute.heureFin;
+  if (brute.categories) for (const k of Object.keys(c.categories)) {
+    if (typeof brute.categories[k] === 'string' && brute.categories[k].trim()) c.categories[k] = brute.categories[k].trim();
+  }
+  if (Array.isArray(brute.equipe)) {
+    c.equipe = brute.equipe
+      .filter(p => p && p.nom && SITES[p.site])
+      .map(p => ({
+        nom: String(p.nom).trim(),
+        site: p.site,
+        email: String(p.email || '').trim(),
+        alias: Array.isArray(p.alias) ? p.alias.map(a => String(a).trim()).filter(Boolean) : [],
+      }));
+  }
+  return c;
+}
+
+function appliquerConfig(c) {
+  CONFIG = c;
+  TEAM = {};
+  NAME_ALIASES = {};
+  for (const p of CONFIG.equipe) {
+    TEAM[p.nom] = { site: p.site, email: p.email };
+    if (p.alias.length) NAME_ALIASES[p.nom] = p.alias;
+  }
+  renderTeamList();
+  renderLegendCategories();
+  remplirFormulaireConfig();
+}
+
+async function chargerConfig() {
+  let brute = null;
+  try {
+    if (CONNECTE) brute = await api('/api/config');
+    else brute = JSON.parse(localStorage.getItem(CLE_STOCKAGE) || 'null');
+  } catch (e) {
+    console.warn('Configuration non chargée, valeurs par défaut utilisées.', e);
+  }
+  appliquerConfig(fusionnerConfig(brute));
+}
+
+async function sauverConfig(c) {
+  if (CONNECTE) {
+    await api('/api/config', JSON.stringify(c, null, 2));
+    return;
+  }
+  try { localStorage.setItem(CLE_STOCKAGE, JSON.stringify(c)); }
+  catch (e) { throw new Error('le navigateur refuse l\'enregistrement local. Utilisez « Exporter (JSON) ».'); }
+}
+
+/* ── Normalisation nom ── */
+function sansAccents(s) {
+  return s.toString().trim().toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ');
+}
+
+function normalizeName(raw) {
+  if (!raw) return '';
+  const s = sansAccents(raw);
+  /* chercher dans TEAM tel quel */
+  for (const key of Object.keys(TEAM)) {
+    if (s === sansAccents(key)) return key;
+  }
+  /* chercher dans les alias */
+  for (const [canonical, aliases] of Object.entries(NAME_ALIASES)) {
+    for (const alias of aliases) {
+      if (s === sansAccents(alias)) return canonical;
+    }
+  }
+  /* correspondance partielle : prénom ou nom seul */
+  for (const key of Object.keys(TEAM)) {
+    const parts = sansAccents(key).split(' ');
+    if (parts.some(p => s.includes(p) && p.length > 3)) return key;
+  }
+  return null;
+}
+
+/* ── Parse date depuis l'entête de colonne ── */
+function parseHeaderDate(header, referenceYear) {
+  if (!header) return null;
+  const h = header.toString().trim();
+
+  /* Format DD-MMM ou DD/MMM */
+  const months = {
+    jan:0, fév:1, fev:1, feb:1, mar:2, avr:3, apr:3, mai:4, may:4,
+    jun:5, juin:5, jul:6, juil:6, aoû:7, aou:7, aug:7, sep:8, oct:9, nov:10, déc:11, dec:11
+  };
+  const m = h.match(/^(\d{1,2})[-\/\s]([a-záéèêôûùîàäëïü]+)\.?$/i);
+  if (m) {
+    const day = parseInt(m[1], 10);
+    const monKey = m[2].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    const mon = months[monKey];
+    if (mon !== undefined) {
+      /* Déterminer l'année : si le mois est avant le mois courant, probablement l'année suivante */
+      const baseYear = referenceYear || new Date().getFullYear();
+      return new Date(baseYear, mon, day);
+    }
+  }
+  /* Numéro de série Excel */
+  if (!isNaN(Number(h))) {
+    const serial = Number(h);
+    const d = new Date(Math.round((serial - 25569) * 86400 * 1000));
+    if (d.getFullYear() > 2000) return d;
+  }
+  return null;
+}
+
+/* ── Détecter l'année des données ── */
+function detectYear(headers) {
+  const months = {
+    jan:0,fév:1,fev:1,feb:1,mar:2,avr:3,apr:3,mai:4,may:4,
+    jun:5,juin:5,jul:6,juil:6,aoû:7,aou:7,aug:7,sep:8,oct:9,nov:10,déc:11,dec:11
+  };
+  let firstMonth = null;
+  for (const h of headers) {
+    const s = h.toString().trim();
+    const m = s.match(/^(\d{1,2})[-\/\s]([a-záéèêôûùîàäëïü]+)\.?$/i);
+    if (m) {
+      const monKey = m[2].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      const mon = months[monKey];
+      if (mon !== undefined) { firstMonth = mon; break; }
+    }
+  }
+  if (firstMonth === null) return new Date().getFullYear();
+  const now = new Date();
+  const curMonth = now.getMonth();
+  if (firstMonth < curMonth - 3) return now.getFullYear() + 1;
+  return now.getFullYear();
+}
+
+/* ── Formatage date ICS ── */
+function icsDate(d, startHour, startMin) {
+  const y = d.getFullYear();
+  const mo = String(d.getMonth()+1).padStart(2,'0');
+  const da = String(d.getDate()).padStart(2,'0');
+  const h  = String(startHour).padStart(2,'0');
+  const mi = String(startMin).padStart(2,'0');
+  return `${y}${mo}${da}T${h}${mi}00`;
+}
+
+/* ── Générer un UID unique ── */
+function uid() {
+  return Date.now() + '-' + Math.random().toString(36).substr(2,9) + '@efs.sante.fr';
+}
+
+/* ── Escape ICS ── */
+function icsEscape(s) {
+  return s.replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');
+}
+
+/* ── Diagnostic ── */
+const diagLines = [];
+function diagLog(cls, msg) { diagLines.push(`<span class="${cls}">${msg}</span>`); }
+function toggleDiag() {
+  const box = document.getElementById('diag-box');
+  const toggle = document.querySelector('.diag-toggle');
+  if (box.style.display === 'none' || !box.style.display) {
+    box.style.display = 'block';
+    box.innerHTML = diagLines.join('\n') || '<span class="warn">Aucun diagnostic disponible — importez un fichier d\'abord.</span>';
+    toggle.textContent = '🔍 Masquer le diagnostic';
+  } else {
+    box.style.display = 'none';
+    toggle.textContent = '🔍 Afficher le diagnostic';
+  }
+}
+
+/* ── Parser le fichier ── */
+function parseWorkbook(wb) {
+  const events = [];
+  const errors = [];
+  diagLines.length = 0;
+
+  diagLog('ok', `Fichier lu — ${wb.SheetNames.length} feuille(s) : ${wb.SheetNames.join(', ')}`);
+
+  /* Sélectionner uniquement le premier onglet dont le nom commence par "Planning" */
+  const targetSheet = wb.SheetNames.find(n => n.trim().toLowerCase().startsWith('planning'));
+
+  if (!targetSheet) {
+    errors.push('Aucun onglet commençant par "Planning" trouvé dans ce fichier.');
+    diagLog('err', 'Aucun onglet "Planning..." trouvé. Onglets disponibles : ' + wb.SheetNames.join(', '));
+    return { events, errors, sheetName: null };
+  }
+
+  diagLog('ok', `Onglet sélectionné : "${targetSheet}"`);
+
+  for (const sheetName of [targetSheet]) {
+
+    const ws = wb.Sheets[sheetName];
+    const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+    diagLog('', `\n── Feuille : "${sheetName}" (${data.length} lignes, ${data[0] ? data[0].length : 0} colonnes)`);
+
+    if (!data || data.length < 2) {
+      diagLog('warn', '  Ignorée : moins de 2 lignes.');
+      continue;
+    }
+
+    /* Trouver la ligne d'en-têtes */
+    let headerRowIdx = -1;
+    for (let i = 0; i < Math.min(5, data.length); i++) {
+      const row = data[i];
+      const rowStr = row.map(c => c.toString().toLowerCase()).join(' ');
+      if (rowStr.includes('nom') || rowStr.includes('personne') || rowStr.includes('prenom')) {
+        headerRowIdx = i; break;
+      }
+    }
+    if (headerRowIdx === -1) {
+      for (let i = 0; i < Math.min(5, data.length); i++) {
+        const row = data[i];
+        const dc = row.filter(c => /\d{1,2}[-\/]\w+/.test(c.toString())).length;
+        if (dc >= 3) { headerRowIdx = i; break; }
+      }
+    }
+    if (headerRowIdx === -1) headerRowIdx = 0;
+
+    const headers = data[headerRowIdx];
+    diagLog('', `  Ligne d'en-têtes : ligne ${headerRowIdx + 1}`);
+    diagLog('', `  5 premiers en-têtes : ${JSON.stringify(headers.slice(0, 8))}`);
+
+    /* Identifier les colonnes clés.
+       Priorité : correspondance exacte "Nom Personne" / "Prénom Nom",
+       puis première occurrence de "nom" ou "personne" parmi les 10 premières colonnes,
+       puis fallback sur la colonne 2. Cela évite de capturer un "Nom" parasite
+       plus loin dans la feuille (ex. colonne de récap). */
+    let colRegion = -1, colSite = -1, colNom = -1;
+    const dateColumns = [];
+
+    /* Passe 1 : correspondance exacte sur toute la ligne */
+    for (let j = 0; j < headers.length; j++) {
+      const h = headers[j].toString().toLowerCase().trim()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      if (h === 'region' || h === 'région') { if (colRegion === -1) colRegion = j; }
+      else if (h === 'site')                { if (colSite   === -1) colSite   = j; }
+      else if (h === 'nom personne' || h === 'prenom nom' || h === 'nom prenom')
+                                            { colNom = j; break; }
+    }
+
+    /* Passe 2 : si "Nom Personne" exact non trouvé, chercher dans les 10 premières colonnes */
+    if (colNom === -1) {
+      for (let j = 0; j < Math.min(10, headers.length); j++) {
+        const h = headers[j].toString().toLowerCase().trim()
+          .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        if (colRegion === -1 && h.includes('region')) colRegion = j;
+        else if (colSite === -1 && h.includes('site')) colSite = j;
+        else if (h.includes('nom') || h.includes('personne') || h.includes('prenom'))
+          { colNom = j; break; }
+      }
+    }
+
+    if (colNom === -1) { colRegion = 0; colSite = 1; colNom = 2; }
+    diagLog('', `  Colonnes : Région=${colRegion}, Site=${colSite}, Nom=${colNom}`);
+
+    /* Trouver l'année probable */
+    const dateHeaders = headers.slice(colNom + 1).map(h => h.toString());
+    const year = detectYear(dateHeaders);
+    diagLog('', `  Année détectée : ${year}`);
+
+    /* Construire la liste des colonnes de dates */
+    const failedHeaders = [];
+    for (let j = colNom + 1; j < headers.length; j++) {
+      const d = parseHeaderDate(headers[j], year);
+      if (d) {
+        dateColumns.push({ col: j, date: d });
+      } else {
+        const v = headers[j].toString().trim();
+        if (v) failedHeaders.push(`col${j}=${JSON.stringify(v)}(${typeof headers[j]})`);
+      }
+    }
+
+    diagLog(dateColumns.length > 0 ? 'ok' : 'err',
+      `  Dates reconnues : ${dateColumns.length} colonnes`);
+    if (failedHeaders.length > 0) {
+      diagLog('warn', `  En-têtes non reconnus (${failedHeaders.length}) : ${failedHeaders.slice(0,10).join(', ')}`);
+    }
+
+    if (dateColumns.length === 0) {
+      errors.push(`Feuille "${sheetName}" : aucune colonne de date reconnue.`);
+      continue;
+    }
+
+    /* Parcourir les lignes de données */
+    let eventsInSheet = 0;
+    for (let i = headerRowIdx + 1; i < data.length; i++) {
+      const row = data[i];
+
+      const rowContent = row.slice(colNom).map(c => c.toString().trim()).join('');
+      if (!rowContent) continue;
+
+      const rawName = row[colNom] ? row[colNom].toString().trim() : '';
+      if (!rawName) continue;
+
+      const canonicalName = normalizeName(rawName);
+      if (!canonicalName) {
+        const hasPR   = row.some(c => /\bPR\b/.test(c.toString().trim()));
+        const hasEXPL = row.some(c => /\bEXPL\b/.test(c.toString().trim()));
+        if (hasPR || hasEXPL) {
+          diagLog('warn', `  Ligne ${i+1} : nom non reconnu "${rawName}" (a des PR/EXPL)`);
+          errors.push(`Ligne ${i+1} ignorée : nom "${rawName}" non reconnu dans la configuration.`);
+        }
+        continue;
+      }
+
+      const person = TEAM[canonicalName];
+
+      for (const dc of dateColumns) {
+        const raw = row[dc.col] ? row[dc.col].toString().trim() : '';
+        const normalized = raw.replace(/\bPRCP\b/g, 'PR');
+        const tokens = normalized.split('/').map(t => t.trim()).filter(t => t === 'PR' || t === 'EXPL');
+        if (!tokens.length) continue;
+
+        for (const cell of tokens) {
+          let type, category, location, tagClass;
+          if (cell === 'EXPL') {
+            type = 'EXPL'; category = CONFIG.categories.EXPL; location = 'EFS'; tagClass = 'tag-expl';
+          } else {
+            const site = SITES[person.site];
+            type = `PROXY ${person.site}`; category = CONFIG.categories[person.site];
+            location = site.location; tagClass = site.cls;
+          }
+          events.push({ name: canonicalName, date: new Date(dc.date), type, category, location, tagClass, email: person.email, site: person.site });
+          eventsInSheet++;
+        }
+      }
+    }
+    diagLog(eventsInSheet > 0 ? 'ok' : 'warn', `  Événements générés : ${eventsInSheet}`);
+  }
+
+  diagLog('', `\n── Total : ${events.length} événement(s), ${errors.length} avertissement(s)`);
+  return { events, errors, sheetName: targetSheet };
+}
+
+/* ── Afficher les erreurs / messages ── */
+function showMsg(html, type = 'info') {
+  const el = document.getElementById('msg');
+  el.innerHTML = html ? `<div class="alert alert-${type}">${html}</div>` : '';
+}
+
+/* ── Jours fériés français (années 2025-2027) ── */
+function buildFeries(year) {
+  // Calcul du dimanche de Pâques (algorithme de Meeus/Jones/Butcher)
+  const a = year % 19, b = Math.floor(year/100), c = year % 100;
+  const d = Math.floor(b/4), e = b % 4, f = Math.floor((b+8)/25);
+  const g = Math.floor((b-f+1)/3), h = (19*a+b-d-g+15) % 30;
+  const i = Math.floor(c/4), k = c % 4;
+  const l = (32+2*e+2*i-h-k) % 7;
+  const m = Math.floor((a+11*h+22*l)/451);
+  const month = Math.floor((h+l-7*m+114)/31) - 1; // 0-indexed
+  const day   = ((h+l-7*m+114) % 31) + 1;
+  const paques = new Date(year, month, day);
+  const j = d => new Date(d).toDateString();
+  return new Set([
+    j(new Date(year, 0,  1)),  // Jour de l'an
+    j(new Date(paques.getTime() + 2*86400000)),  // Lundi de Pâques
+    j(new Date(year, 4,  1)),  // Fête du Travail
+    j(new Date(year, 4,  8)),  // Victoire 1945
+    j(new Date(paques.getTime() + 39*86400000)), // Ascension
+    j(new Date(paques.getTime() + 50*86400000)), // Lundi de Pentecôte
+    j(new Date(year, 6, 14)),  // Fête Nationale
+    j(new Date(year, 7, 15)),  // Assomption
+    j(new Date(year, 10, 1)),  // Toussaint
+    j(new Date(year, 10,11)),  // Armistice
+    j(new Date(year, 11,25)),  // Noël
+  ]);
+}
+
+function isJourOuvre(date) {
+  const dow = date.getDay();
+  if (dow === 0 || dow === 6) return false; // week-end
+  const feries = buildFeries(date.getFullYear());
+  return !feries.has(date.toDateString());
+}
+
+/* ── Détecter les incohérences ── */
+function detectIncoherences(events) {
+  const issues = { weekend: [], ferie: [], doublePR: [], doubleEXPL: [] };
+
+  // Regrouper par date
+  const byDate = {};
+  for (const e of events) {
+    const key = e.date.toDateString();
+    if (!byDate[key]) byDate[key] = [];
+    byDate[key].push(e);
+  }
+
+  for (const [dateStr, evts] of Object.entries(byDate)) {
+    const d = new Date(dateStr);
+    const dow = d.getDay();
+    const isFerie = !isJourOuvre(d) && dow !== 0 && dow !== 6;
+    const isWeekend = dow === 0 || dow === 6;
+    const label = d.toLocaleDateString('fr-FR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+
+    // Règle 1 : jour non ouvré
+    for (const e of evts) {
+      if (isWeekend) issues.weekend.push({ label, name: e.name, type: e.type });
+      else if (isFerie) issues.ferie.push({ label, name: e.name, type: e.type });
+    }
+
+    // Règle 2 : plusieurs PR sur le même site le même jour
+    const prBySite = {};
+    for (const e of evts) {
+      if (e.type.startsWith('PROXY')) {
+        if (!prBySite[e.type]) prBySite[e.type] = [];
+        prBySite[e.type].push(e.name);
+      }
+    }
+    for (const [siteType, names] of Object.entries(prBySite)) {
+      if (names.length > 1) {
+        issues.doublePR.push({ label, site: siteType, names });
+      }
+    }
+
+    // Règle 3 : plusieurs EXPL le même jour
+    const expls = evts.filter(e => e.type === 'EXPL');
+    if (expls.length > 1) {
+      issues.doubleEXPL.push({ label, names: expls.map(e => e.name) });
+    }
+  }
+
+  return issues;
+}
+
+/* ── Afficher les incohérences ── */
+function renderIncoherences(events) {
+  const issues = detectIncoherences(events);
+  const total = issues.weekend.length + issues.ferie.length +
+                issues.doublePR.length + issues.doubleEXPL.length;
+
+  const card = document.getElementById('inc-card');
+  const badge = document.getElementById('inc-badge');
+  const content = document.getElementById('inc-content');
+
+  if (total === 0) {
+    card.style.display = 'none';
+    return;
+  }
+
+  card.style.display = 'block';
+  badge.textContent = total + ' problème' + (total > 1 ? 's' : '');
+
+  let html = '';
+
+  if (issues.weekend.length) {
+    html += `<div class="inc-group">
+      <div class="inc-group-title">📅 Planification un week-end (${issues.weekend.length})</div>`;
+    for (const i of issues.weekend) {
+      html += `<div class="inc-row">
+        <span class="inc-date">${i.label}</span>
+        <span class="inc-who">${i.name.split(' ').slice(-1)[0]}</span>
+        <span class="inc-tag">${i.type}</span>
+      </div>`;
+    }
+    html += '</div>';
+  }
+
+  if (issues.ferie.length) {
+    html += `<div class="inc-group">
+      <div class="inc-group-title">🗓️ Planification un jour férié (${issues.ferie.length})</div>`;
+    for (const i of issues.ferie) {
+      html += `<div class="inc-row">
+        <span class="inc-date">${i.label}</span>
+        <span class="inc-who">${i.name.split(' ').slice(-1)[0]}</span>
+        <span class="inc-tag">${i.type}</span>
+      </div>`;
+    }
+    html += '</div>';
+  }
+
+  if (issues.doublePR.length) {
+    html += `<div class="inc-group">
+      <div class="inc-group-title">⚠️ Plusieurs PR sur le même site le même jour (${issues.doublePR.length})</div>`;
+    for (const i of issues.doublePR) {
+      html += `<div class="inc-row">
+        <span class="inc-date">${i.label}</span>
+        <span class="inc-who">${i.names.map(n => n.split(' ').slice(-1)[0]).join(', ')}</span>
+        <span class="inc-tag">${i.site}</span>
+      </div>`;
+    }
+    html += '</div>';
+  }
+
+  if (issues.doubleEXPL.length) {
+    html += `<div class="inc-group">
+      <div class="inc-group-title">⚠️ Plusieurs EXPL le même jour (${issues.doubleEXPL.length})</div>`;
+    for (const i of issues.doubleEXPL) {
+      html += `<div class="inc-row">
+        <span class="inc-date">${i.label}</span>
+        <span class="inc-who">${i.names.map(n => n.split(' ').slice(-1)[0]).join(', ')}</span>
+        <span class="inc-tag">EXPL</span>
+      </div>`;
+    }
+    html += '</div>';
+  }
+
+  content.innerHTML = html;
+}
+
+function toggleInc() {
+  const header = document.getElementById('inc-header');
+  const body   = document.getElementById('inc-body');
+  header.classList.toggle('open');
+  body.classList.toggle('open');
+}
+
+/* ── Afficher les stats ── */
+function renderStats(events) {
+  const counts = {};
+  for (const e of events) { counts[e.type] = (counts[e.type]||0) + 1; }
+  const grid = document.getElementById('stats-grid');
+  const defs = [
+    { key: 'EXPL',      label: 'Exploitation',  cls: 'tag-expl' },
+    { key: 'PROXY TOU', label: 'Proxi Tours',    cls: 'tag-tou'  },
+    { key: 'PROXY ANG', label: 'Proxi Angers',   cls: 'tag-ang'  },
+    { key: 'PROXY NTS', label: 'Proxi Nantes',   cls: 'tag-nts'  },
+  ];
+  grid.innerHTML = [
+    `<div class="stat"><div class="num">${events.length}</div><div class="lbl">Total événements</div></div>`,
+    ...defs.map(d => `<div class="stat"><div class="num" style="color:var(--${d.cls.replace('tag-','').replace('expl','green').replace('tou','blue').replace('ang','purple').replace('nts','orange')})">${counts[d.key]||0}</div><div class="lbl">${d.label}</div></div>`)
+  ].join('');
+}
+
+/* ── Rendu tableau prévisualisation ── */
+function renderTable(events) {
+  const tbody = document.getElementById('preview-tbody');
+  if (!events.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:2rem">Aucun événement trouvé.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = events.map(e => `
+    <tr>
+      <td style="font-weight:500">${esc(e.name)}</td>
+      <td>${e.date.toLocaleDateString('fr-FR', {weekday:'short', day:'2-digit', month:'short', year:'numeric'})}</td>
+      <td><span class="tag ${e.tagClass}">${e.type}</span></td>
+      <td>${e.location}</td>
+      <td style="color:var(--text-muted);font-size:0.78rem">${esc(e.email) || '<span style="color:var(--red)">email manquant</span>'}</td>
+    </tr>
+  `).join('');
+}
+
+/* ── Filtres ── */
+function setupFilters(events) {
+  const bar = document.getElementById('filter-bar');
+  const types = ['Tous', ...new Set(events.map(e => e.type))];
+  bar.innerHTML = types.map((t, i) =>
+    `<button class="filter-btn ${i===0?'active':''}" onclick="filterEvents('${t}', this)">${t}</button>`
+  ).join('');
+}
+
+function filterEvents(type, btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const filtered = type === 'Tous' ? allEvents : allEvents.filter(e => e.type === type);
+  renderTable(filtered);
+}
+
+/* ── Données communes ICS / Outlook ── */
+function heureMinute(hhmm) {
+  const [h, m] = hhmm.split(':').map(Number);
+  return { h, m };
+}
+
+function sujetEvenement(e) {
+  const label     = e.type === 'EXPL' ? 'Exploitation' : `Proxi ${e.site}`;
+  const parts     = e.name.split(' ');
+  const firstName = parts[parts.length - 1];
+  return `${label} — ${firstName}`;
+}
+
+/* Date locale au format ISO sans fuseau (interprétée comme heure locale par PowerShell) */
+function isoLocal(d, hhmm) {
+  const { h, m } = heureMinute(hhmm);
+  const y  = d.getFullYear();
+  const mo = String(d.getMonth()+1).padStart(2,'0');
+  const da = String(d.getDate()).padStart(2,'0');
+  return `${y}-${mo}-${da}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00`;
+}
+
+/* ── Générer le ICS ── */
+function buildICS(events) {
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//EFS CPDL//Planning ICS//FR',
+    'CALSCALE:GREGORIAN',
+    'METHOD:REQUEST',
+    'X-WR-CALNAME:Planning CPDL EFS',
+    'X-WR-TIMEZONE:Europe/Paris',
+  ];
+
+  const debut = heureMinute(CONFIG.heureDebut);
+  const fin   = heureMinute(CONFIG.heureFin);
+  for (const e of events) {
+    const dtstart = icsDate(e.date, debut.h, debut.m);
+    const dtend   = icsDate(e.date, fin.h, fin.m);
+    const summary = sujetEvenement(e);
+
+    lines.push('BEGIN:VEVENT');
+    lines.push(`UID:${uid()}`);
+    lines.push(`DTSTAMP:${icsDate(new Date(), 0, 0).replace('T000000','T120000')}`);
+    lines.push(`DTSTART;TZID=Europe/Paris:${dtstart}`);
+    lines.push(`DTEND;TZID=Europe/Paris:${dtend}`);
+    lines.push(`SUMMARY:${icsEscape(summary)}`);
+    lines.push(`LOCATION:${icsEscape(e.location)}`);
+    lines.push('DESCRIPTION:');
+    lines.push(`CATEGORIES:${icsEscape(e.category)}`);
+    /* Invité obligatoire sans option de réponse */
+    if (e.email) lines.push(`ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;RSVP=FALSE;CN="${e.name.replace(/"/g, '')}":mailto:${e.email}`);
+    /* Pas de demande de réponse */
+    lines.push('X-MICROSOFT-CDO-BUSYSTATUS:BUSY');
+    lines.push('X-MICROSOFT-CDO-INTENDEDSTATUS:BUSY');
+    lines.push('TRANSP:OPAQUE');
+    lines.push('SEQUENCE:0');
+    lines.push('END:VEVENT');
+  }
+
+  lines.push('END:VCALENDAR');
+  return lines.join('\r\n');
+}
+
+/* ── Export ── */
+function exportICS() {
+  if (!allEvents.length) return;
+  const ics = buildICS(allEvents);
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const today = new Date().toISOString().slice(0,10);
+  a.download = `planning_cpdl_${today}.ics`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ── Reset ── */
+function reset() {
+  allEvents = [];
+  lastWorkbook = null;
+  document.getElementById('preview-section').style.display = 'none';
+  document.getElementById('inc-card').style.display = 'none';
+  document.getElementById('inc-content').innerHTML = '';
+  document.getElementById('sheet-info').style.display = 'none';
+  document.getElementById('sheet-name-display').textContent = '';
+  document.getElementById('file-input').value = '';
+  document.getElementById('outlook-msg').innerHTML = '';
+  document.getElementById('outlook-log').style.display = 'none';
+  showMsg('');
+}
+
+/* ── Analyse du classeur et affichage (relancée si la configuration change) ── */
+function analyserClasseur(wb) {
+  const { events, errors, sheetName } = parseWorkbook(wb);
+  allEvents = events;
+
+  document.getElementById('preview-section').style.display = 'block';
+  document.getElementById('badge-count').textContent = `${events.length} événement${events.length>1?'s':''}`;
+
+  /* Afficher le nom de l'onglet analysé */
+  const sheetInfo = document.getElementById('sheet-info');
+  if (sheetName) {
+    document.getElementById('sheet-name-display').textContent = sheetName;
+    sheetInfo.style.display = 'flex';
+  } else {
+    sheetInfo.style.display = 'none';
+  }
+
+  let msgHtml = '';
+  if (errors.length > 0) {
+    msgHtml = `<div class="alert alert-error">⚠️ ${errors.length} avertissement(s) :<br>${errors.map(e => `• ${esc(e)}`).join('<br>')}</div>`;
+  }
+  const sansEmail = [...new Set(events.filter(e => !e.email).map(e => e.name))];
+  if (sansEmail.length) {
+    msgHtml += `<div class="alert alert-error">⚠️ Email manquant pour : ${sansEmail.map(esc).join(', ')}. Ces événements seront créés sans participant obligatoire.</div>`;
+  }
+  if (events.length === 0) {
+    msgHtml += '<div class="alert alert-info">ℹ️ Aucun événement PR ou EXPL trouvé. Vérifiez la structure du fichier.</div>';
+  } else {
+    msgHtml += `<div class="alert alert-success">✅ ${events.length} événement(s) prêt(s) à exporter.</div>`;
+  }
+  document.getElementById('msg').innerHTML = msgHtml;
+
+  renderStats(events);
+  renderIncoherences(events);
+  setupFilters(events);
+  renderTable(events);
+  document.getElementById('btn-export').disabled = events.length === 0;
+  document.getElementById('btn-injecter').disabled = events.length === 0;
+  document.getElementById('btn-simuler').disabled = events.length === 0;
+}
+
+/* ── Traitement du fichier ── */
+function handleFile(file) {
+  if (!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!['xlsx','xls','csv'].includes(ext)) {
+    showMsg('Format non supporté. Utilisez .xlsx, .xls ou .csv.', 'error');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      let wb;
+      if (ext === 'csv') {
+        wb = XLSX.read(ev.target.result, { type: 'string' });
+      } else {
+        /* cellFormula:false lit les valeurs calculées sans les formules.
+           On ne passe pas raw:false pour éviter que SheetJS reformate
+           les entêtes texte ("28-sep.") selon le style de cellule Excel. */
+        wb = XLSX.read(ev.target.result, {
+          type: 'array',
+          cellFormula: false,
+        });
+      }
+
+      lastWorkbook = wb;
+      analyserClasseur(wb);
+
+    } catch(err) {
+      console.error(err);
+      showMsg(`Erreur lors de la lecture du fichier : ${esc(err.message)}`, 'error');
+    }
+  };
+
+  if (ext === 'csv') {
+    reader.readAsText(file, 'UTF-8');
+  } else {
+    reader.readAsArrayBuffer(file);
+  }
+}
+
+/* ── Rendu de la liste d'équipe ── */
+function renderTeamList() {
+  const container = document.getElementById('team-list');
+  container.innerHTML = CONFIG.equipe.map(p => {
+    const meta = SITES[p.site];
+    const firstName = p.nom.split(' ').slice(-1)[0];
+    return `
+      <div style="display:flex;align-items:center;gap:0.5rem;padding:0.35rem 0.6rem;
+                  background:var(--bg);border:1px solid var(--border);border-radius:6px;">
+        <span class="tag ${meta.cls}" style="min-width:42px;text-align:center">${meta.label}</span>
+        <span style="font-size:0.83rem;font-weight:500;flex:1">${esc(firstName)}</span>
+        <span style="font-size:0.72rem;color:var(--text-muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(p.email)}">${esc(p.email.split('@')[0]) || '<span style="color:var(--red)">sans email</span>'}</span>
+      </div>`;
+  }).join('') || '<p style="font-size:0.83rem;color:var(--text-muted)">Aucun collaborateur configuré.</p>';
+}
+
+function renderLegendCategories() {
+  const c = CONFIG.categories;
+  document.getElementById('legend-categories').innerHTML = `
+    <div class="legend-item leg-expl"><div class="legend-dot"></div>EXPL → ${esc(c.EXPL)}</div>
+    ${Object.entries(SITES).map(([code, s]) =>
+      `<div class="legend-item ${s.legend}"><div class="legend-dot"></div>PROXY ${code} → ${esc(c[code])}</div>`).join('')}`;
+}
+
+/* ── Éditeur de configuration ── */
+function ligneCollaborateur(p) {
+  const options = Object.entries(SITES).map(([code, s]) =>
+    `<option value="${code}" ${p.site === code ? 'selected' : ''}>${s.label}</option>`).join('');
+  return `
+    <tr>
+      <td><input type="text" data-champ="nom" value="${esc(p.nom)}" placeholder="NOM Prénom"></td>
+      <td><select data-champ="site">${options}</select></td>
+      <td><input type="email" data-champ="email" value="${esc(p.email)}" placeholder="prenom.nom@efs.sante.fr"></td>
+      <td><input type="text" data-champ="alias" value="${esc(p.alias.join('; '))}" placeholder="Autres écritures possibles"></td>
+      <td><button class="btn-icon" title="Supprimer" onclick="this.closest('tr').remove()">✕</button></td>
+    </tr>`;
+}
+
+function remplirFormulaireConfig() {
+  document.getElementById('team-editor-body').innerHTML = CONFIG.equipe.map(ligneCollaborateur).join('');
+  document.getElementById('cfg-debut').value = CONFIG.heureDebut;
+  document.getElementById('cfg-fin').value   = CONFIG.heureFin;
+  for (const k of Object.keys(CONFIG.categories)) {
+    document.getElementById(`cfg-cat-${k}`).value = CONFIG.categories[k];
+  }
+}
+
+function ajouterCollaborateur() {
+  const tbody = document.getElementById('team-editor-body');
+  tbody.insertAdjacentHTML('beforeend', ligneCollaborateur({ nom: '', site: 'TOU', email: '', alias: [] }));
+  tbody.lastElementChild.querySelector('input').focus();
+}
+
+function lireFormulaireConfig() {
+  const equipe = [];
+  const erreurs = [];
+  const vus = new Set();
+  document.querySelectorAll('#team-editor-body tr').forEach((tr, i) => {
+    const val = champ => tr.querySelector(`[data-champ="${champ}"]`).value.trim();
+    const nom = val('nom').replace(/\s+/g, ' ');
+    const email = val('email');
+    if (!nom && !email) return; /* ligne vide ignorée */
+    if (!nom) { erreurs.push(`Ligne ${i+1} : le nom est obligatoire.`); return; }
+    if (vus.has(sansAccents(nom))) erreurs.push(`« ${nom} » apparaît deux fois.`);
+    vus.add(sansAccents(nom));
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) erreurs.push(`Email invalide pour ${nom} : ${email}`);
+    equipe.push({
+      nom, site: val('site'), email,
+      alias: val('alias').split(';').map(a => a.trim()).filter(Boolean),
+    });
+  });
+
+  const heureDebut = document.getElementById('cfg-debut').value;
+  const heureFin   = document.getElementById('cfg-fin').value;
+  if (!heureDebut || !heureFin || heureDebut >= heureFin) erreurs.push('L\'heure de fin doit être après l\'heure de début.');
+
+  const categories = {};
+  for (const k of Object.keys(CONFIG_DEFAUT.categories)) {
+    categories[k] = document.getElementById(`cfg-cat-${k}`).value.trim() || CONFIG_DEFAUT.categories[k];
+  }
+
+  return { erreurs, config: { ...CONFIG, heureDebut, heureFin, categories, equipe } };
+}
+
+function messageConfig(html, type) {
+  document.getElementById('config-msg').innerHTML = html ? `<div class="alert alert-${type}" style="margin-top:0.75rem">${html}</div>` : '';
+}
+
+async function enregistrerConfig(c, message) {
+  try {
+    await sauverConfig(c);
+    appliquerConfig(c);
+    if (lastWorkbook) analyserClasseur(lastWorkbook);
+    messageConfig(message, 'success');
+  } catch (e) {
+    messageConfig(`Enregistrement impossible : ${esc(e.message)}`, 'error');
+  }
+}
+
+function enregistrerConfigDepuisFormulaire() {
+  const { erreurs, config } = lireFormulaireConfig();
+  if (erreurs.length) {
+    messageConfig(erreurs.map(esc).join('<br>'), 'error');
+    return;
+  }
+  enregistrerConfig(fusionnerConfig(config),
+    CONNECTE ? '✅ Configuration enregistrée (fichier config.json à côté du script).'
+             : '✅ Configuration enregistrée dans ce navigateur.');
+}
+
+function restaurerConfigDefaut() {
+  if (!confirm('Remplacer la configuration actuelle par les valeurs par défaut ?')) return;
+  enregistrerConfig(structuredClone({ ...CONFIG_DEFAUT, calendrier: CONFIG.calendrier }), '✅ Valeurs par défaut restaurées.');
+}
+
+function exporterConfig() {
+  const blob = new Blob([JSON.stringify(CONFIG, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'config-planning-outlook.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('config-file').addEventListener('change', async function(e) {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  try {
+    const brute = JSON.parse(await file.text());
+    enregistrerConfig(fusionnerConfig(brute), `✅ Configuration importée depuis ${esc(file.name)}.`);
+  } catch (err) {
+    messageConfig(`Fichier JSON illisible : ${esc(err.message)}`, 'error');
+  }
+});
+
+/* ── Injection directe dans Outlook (mode connecté) ── */
+function messageOutlook(html, type) {
+  document.getElementById('outlook-msg').innerHTML = html ? `<div class="alert alert-${type}">${html}</div>` : '';
+}
+
+async function chargerCalendriers() {
+  const select = document.getElementById('outlook-calendrier');
+  select.innerHTML = '<option value="">Chargement des calendriers…</option>';
+  try {
+    const { calendriers } = await api('/api/calendriers');
+    select.innerHTML = '<option value="">Choisir un calendrier…</option>' + calendriers.map(c =>
+      `<option value="${esc(c.folderPath)}" ${c.folderPath === CONFIG.calendrier ? 'selected' : ''}>${esc(c.folderPath)}</option>`).join('');
+    if (CONFIG.calendrier && select.value !== CONFIG.calendrier) {
+      messageOutlook(`Le calendrier mémorisé n'est plus accessible : ${esc(CONFIG.calendrier)}`, 'error');
+    }
+  } catch (e) {
+    select.innerHTML = '<option value="">Outlook inaccessible</option>';
+    messageOutlook(`Impossible de lister les calendriers : ${esc(e.message)}`, 'error');
+  }
+}
+
+function evenementsPourOutlook() {
+  return allEvents.map(e => ({
+    sujet: sujetEvenement(e),
+    debut: isoLocal(e.date, CONFIG.heureDebut),
+    fin:   isoLocal(e.date, CONFIG.heureFin),
+    lieu:  e.location,
+    categorie: e.category,
+    participants: e.email ? [{ nom: e.name, email: e.email }] : [],
+  }));
+}
+
+async function injecterOutlook(simulation) {
+  const calendrier = document.getElementById('outlook-calendrier').value;
+  if (!calendrier) { messageOutlook('Choisissez d\'abord le calendrier cible.', 'error'); return; }
+  if (!allEvents.length) return;
+
+  const envoyer  = document.getElementById('outlook-envoyer').checked;
+  const doublons = document.getElementById('outlook-doublons').checked;
+  if (!simulation && envoyer && !confirm(`${allEvents.length} invitation(s) vont être envoyées par mail aux collaborateurs. Continuer ?`)) return;
+
+  /* Mémoriser le calendrier choisi pour la prochaine fois */
+  if (calendrier !== CONFIG.calendrier) {
+    CONFIG.calendrier = calendrier;
+    sauverConfig(CONFIG).catch(e => console.warn('Calendrier non mémorisé', e));
+  }
+
+  const boutons = ['btn-injecter', 'btn-simuler'].map(id => document.getElementById(id));
+  boutons.forEach(b => b.disabled = true);
+  const log = document.getElementById('outlook-log');
+  log.innerHTML = '';
+  log.style.display = 'block';
+  const progress = document.getElementById('outlook-progress');
+  const bar = document.getElementById('outlook-progress-bar');
+  progress.style.display = 'block';
+  bar.style.width = '0%';
+  messageOutlook(simulation ? 'Simulation en cours…' : 'Injection en cours, ne fermez pas la fenêtre PowerShell…', 'info');
+
+  const evenements = evenementsPourOutlook();
+  const totaux = { cree: 0, doublon: 0, erreur: 0, simule: 0 };
+  const classes = { cree: 'l-ok', simule: 'l-ok', doublon: 'l-skip', erreur: 'l-err' };
+  const icones  = { cree: '✅', simule: '🔍', doublon: '⏭️', erreur: '❌' };
+  const TAILLE_LOT = 10;
+
+  try {
+    for (let i = 0; i < evenements.length; i += TAILLE_LOT) {
+      const lot = evenements.slice(i, i + TAILLE_LOT);
+      const { resultats } = await api('/api/importer', {
+        calendrier, simulation, envoyer, ignorerDoublons: doublons, evenements: lot,
+      });
+      for (const r of resultats) {
+        totaux[r.statut] = (totaux[r.statut] || 0) + 1;
+        const debut = new Date(r.debut).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' });
+        log.insertAdjacentHTML('beforeend',
+          `<div class="${classes[r.statut] || ''}">${icones[r.statut] || ''} ${debut} · ${esc(r.sujet)}${r.message ? ` <em>(${esc(r.message)})</em>` : ''}</div>`);
+        if (r.avertissement) log.insertAdjacentHTML('beforeend', `<div class="l-warn">⚠️ ${esc(r.avertissement)}</div>`);
+      }
+      log.scrollTop = log.scrollHeight;
+      bar.style.width = `${Math.round(Math.min(i + TAILLE_LOT, evenements.length) / evenements.length * 100)}%`;
+    }
+
+    const parts = [];
+    if (simulation) parts.push(`${totaux.simule} seraient créés`);
+    else parts.push(`${totaux.cree} créé(s)`);
+    if (totaux.doublon) parts.push(`${totaux.doublon} déjà présent(s), ignoré(s)`);
+    if (totaux.erreur)  parts.push(`${totaux.erreur} en erreur`);
+    messageOutlook(`${simulation ? '🔍 Simulation terminée' : '✅ Injection terminée'} : ${parts.join(', ')}.`,
+      totaux.erreur ? 'error' : 'success');
+  } catch (e) {
+    messageOutlook(`Interruption : ${esc(e.message)}. Les événements déjà traités restent dans Outlook ; relancez avec « Ignorer les événements déjà présents ».`, 'error');
+  } finally {
+    boutons.forEach(b => b.disabled = false);
+  }
+}
+
+async function quitterApplication() {
+  if (!confirm('Arrêter le serveur local ? La page ne pourra plus piloter Outlook.')) return;
+  try { await api('/api/quitter', {}); } catch (e) { /* serveur déjà arrêté */ }
+  document.body.innerHTML = '<main><div class="card"><h2>Application fermée</h2><p>Vous pouvez fermer cet onglet.</p></div></main>';
+}
+
+/* ── Bandeau de mode ── */
+function renderModeBanner() {
+  const banner = document.getElementById('mode-banner');
+  if (CONNECTE) {
+    banner.className = 'mode-banner mode-connecte';
+    banner.innerHTML = '🟢 Connecté à Outlook via le script PowerShell : injection directe disponible (étape 3).'
+      + '<button class="btn btn-secondary btn-sm" style="margin-left:auto" onclick="quitterApplication()">⏻ Fermer l\'application</button>';
+    document.getElementById('outlook-card').style.display = 'block';
+  } else {
+    banner.className = 'mode-banner mode-autonome';
+    banner.innerHTML = '🟠 Mode autonome : export ICS uniquement. Pour injecter directement dans Outlook, lancez <strong>Lancer-Planning-Outlook.cmd</strong>.';
+  }
+}
+
+/* ── Événements DOM ── */
+document.getElementById('file-input').addEventListener('change', function(e) {
+  handleFile(e.target.files[0]);
+});
+
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault();
+  dz.classList.remove('drag-over');
+  handleFile(e.dataTransfer.files[0]);
+});
+
+/* ── Démarrage ── */
+renderModeBanner();
+chargerConfig().then(() => { if (CONNECTE) chargerCalendriers(); });
+
+</script>
+</body>
+</html>
