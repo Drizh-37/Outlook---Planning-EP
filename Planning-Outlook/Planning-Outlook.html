@@ -1771,10 +1771,8 @@ dz.addEventListener('drop', e => {
 if (CONNECTE) {
   setInterval(() => api('/api/presence', {}).catch(() => {}), 20000);
   window.addEventListener('pagehide', () => {
-    try {
-      fetch('/api/au-revoir', { method: 'POST', keepalive: true, body: '{}',
-        headers: { 'X-Jeton': JETON, 'Content-Type': 'application/json; charset=utf-8' } });
-    } catch (e) { /* ignoré */ }
+    /* sendBeacon est garanti à la fermeture, mais n'accepte pas d'en-tête : le jeton part dans le corps */
+    try { navigator.sendBeacon('/api/au-revoir', JETON); } catch (e) { /* ignoré */ }
   });
 }
 

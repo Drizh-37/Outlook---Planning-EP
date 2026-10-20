@@ -432,7 +432,18 @@ function Invoke-Requete {
         return
     }
 
-    # Toutes les API exigent le jeton de session
+    # Signal de fermeture (navigator.sendBeacon) : le jeton arrive dans le corps, faute d'en-tête possible
+    if ($methode -eq 'POST' -and $chemin -eq '/api/au-revoir') {
+        if ((Read-Corps -Requete $requete).Trim() -eq $Jeton) {
+            # Arrêt dans quelques secondes, sauf si la page se recharge entre-temps
+            $script:DernierSignal = [datetime]::Now - $DelaiInactivite + $DelaiFermeture
+            Write-Host 'Fenêtre fermée ou page rechargée.' -ForegroundColor Gray
+        }
+        Send-Reponse -Contexte $Contexte -Code 204
+        return
+    }
+
+    # Toutes les autres API exigent le jeton de session
     if ($requete.Headers['X-Jeton'] -ne $Jeton) {
         Send-Json -Contexte $Contexte -Code 401 -Objet @{ erreur = 'Jeton de session invalide. Rechargez la page depuis le script.' }
         return
@@ -443,12 +454,6 @@ function Invoke-Requete {
     try {
         switch ("$methode $chemin") {
             'POST /api/presence' {
-                Send-Json -Contexte $Contexte -Objet @{ ok = $true }
-            }
-            'POST /api/au-revoir' {
-                # Fenêtre fermée ou page rechargée : arrêt dans quelques secondes,
-                # sauf si la page se recharge entre-temps
-                $script:DernierSignal = [datetime]::Now - $DelaiInactivite + $DelaiFermeture
                 Send-Json -Contexte $Contexte -Objet @{ ok = $true }
             }
             'GET /api/config' {

@@ -37,7 +37,7 @@ Options de l'étape 3 :
 Seul ce calendrier est ouvert : l'application ne parcourt pas les autres. Un autre chemin peut être saisi dans le champ ; il est mémorisé pour la fois suivante.
 
 Pour quitter : fermer la fenêtre, ou cliquer sur **Fermer l'application**. Le moteur s'arrête
-de lui-même quelques secondes après la fermeture (3 minutes au plus).
+de lui-même une dizaine de secondes après la fermeture (3 minutes au plus si le signal de fermeture se perd).
 Relancer l'application alors qu'elle tourne déjà rouvre simplement une fenêtre.
 
 ## Configurer l'équipe
