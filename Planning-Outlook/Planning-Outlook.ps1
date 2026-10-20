@@ -4,7 +4,11 @@
 
 .DESCRIPTION
     Ce script démarre un petit serveur web local (accessible uniquement depuis ce poste)
-    puis ouvre la page Planning-Outlook.html dans le navigateur.
+    puis affiche la page Planning-Outlook.html dans une fenêtre d'application dédiée
+    (Microsoft Edge en mode application : ni onglets, ni barre d'adresse).
+    Lancé par Lancer-Planning-Outlook.cmd, le script tourne sans fenêtre console ;
+    il s'arrête de lui-même quand la fenêtre de l'application est fermée.
+    Le journal d'exécution est écrit dans Planning-Outlook.log, à côté du script.
 
     La page lit le planning Excel, contrôle les incohérences, puis demande au script
     de créer les rendez-vous directement dans le calendrier partagé via l'API COM Outlook :
@@ -29,7 +33,7 @@
     Chemin du fichier de configuration. Par défaut : config.json à côté du script.
 
 .PARAMETER SansNavigateur
-    N'ouvre pas le navigateur automatiquement (l'adresse est affichée dans la console).
+    N'ouvre pas la fenêtre de l'application (l'adresse est affichée dans la console).
 
 .EXAMPLE
     .\Planning-Outlook.ps1
@@ -38,7 +42,7 @@
     .\Planning-Outlook.ps1 -Port 9000
 
 .NOTES
-    Version   : 2.0
+    Version   : 2.1
     Auteur    : DSI EFS – Tours
     Date      : Octobre 2026
 
@@ -78,12 +82,20 @@ $OL_FOLDER_CALENDAR  = 9   # olFolderCalendar (GetSharedDefaultFolder)
 $DossierScript = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Definition }
 if (-not $FichierConfig) { $FichierConfig = Join-Path $DossierScript 'config.json' }
 
-$FichierHtml = Join-Path $DossierScript 'Planning-Outlook.html'
+$FichierHtml    = Join-Path $DossierScript 'Planning-Outlook.html'
+$FichierJournal = Join-Path $DossierScript 'Planning-Outlook.log'
+
+# Arrêt automatique : la page signale sa présence toutes les 20 s. Sans signal pendant
+# ce délai (fenêtre fermée), le serveur s'arrête. Le délai tient compte du ralentissement
+# des minuteries par le navigateur quand la fenêtre est réduite (1 signal par minute).
+$DelaiInactivite = [timespan]::FromMinutes(3)
+$DelaiFermeture  = [timespan]::FromSeconds(10)
 $Utf8SansBom = New-Object System.Text.UTF8Encoding($false)
 
 $script:Outlook   = $null
 $script:Namespace = $null
 $script:Arret     = $false
+$script:DernierSignal = [datetime]::Now
 $script:CalendrierCache = $null
 $script:CheminCache     = $null
 
@@ -409,6 +421,7 @@ function Invoke-Requete {
 
     # Page principale : le jeton de session est injecté dans le HTML
     if ($methode -eq 'GET' -and $chemin -eq '/') {
+        $script:DernierSignal = [datetime]::Now
         $html = [IO.File]::ReadAllText($FichierHtml, [Text.Encoding]::UTF8).Replace('__JETON_SESSION__', $Jeton)
         Send-Reponse -Contexte $Contexte -Contenu $html -Type 'text/html; charset=utf-8'
         return
@@ -425,8 +438,19 @@ function Invoke-Requete {
         return
     }
 
+    $script:DernierSignal = [datetime]::Now
+
     try {
         switch ("$methode $chemin") {
+            'POST /api/presence' {
+                Send-Json -Contexte $Contexte -Objet @{ ok = $true }
+            }
+            'POST /api/au-revoir' {
+                # Fenêtre fermée ou page rechargée : arrêt dans quelques secondes,
+                # sauf si la page se recharge entre-temps
+                $script:DernierSignal = [datetime]::Now - $DelaiInactivite + $DelaiFermeture
+                Send-Json -Contexte $Contexte -Objet @{ ok = $true }
+            }
             'GET /api/config' {
                 $contenu = if (Test-Path -Path $FichierConfig -PathType Leaf) {
                     [IO.File]::ReadAllText($FichierConfig, [Text.Encoding]::UTF8)
@@ -466,19 +490,80 @@ function Invoke-Requete {
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Fonctions fenêtre et messages
+# ──────────────────────────────────────────────────────────────────────────────
+
+function Show-Erreur {
+    <#
+    .SYNOPSIS
+        Affiche une erreur bloquante dans une boîte de dialogue (la console est invisible), puis quitte.
+    #>
+    param([Parameter(Mandatory)] [string]$Message)
+
+    Write-Host "[ERREUR] $Message" -ForegroundColor Red
+    try {
+        Add-Type -AssemblyName System.Windows.Forms
+        [void][System.Windows.Forms.MessageBox]::Show($Message, 'Planning CPDL', 'OK', 'Error')
+    }
+    catch {
+        # Pas d'interface graphique disponible : le message reste dans le journal
+    }
+    try { Stop-Transcript | Out-Null } catch { }
+    exit 1
+}
+
+function Open-FenetreApplication {
+    <#
+    .SYNOPSIS
+        Ouvre l'adresse dans une fenêtre Edge en mode application, ou à défaut dans le navigateur par défaut.
+
+    .NOTES
+        Un profil Edge dédié (dans %LOCALAPPDATA%\PlanningOutlook) isole la fenêtre de la
+        navigation habituelle : pas d'onglets, d'extensions ni d'historique partagés.
+    #>
+    param([Parameter(Mandatory)] [string]$Adresse)
+
+    $candidats = @(
+        (Join-Path ([Environment]::GetFolderPath('ProgramFilesX86')) 'Microsoft\Edge\Application\msedge.exe'),
+        (Join-Path ([Environment]::GetFolderPath('ProgramFiles'))    'Microsoft\Edge\Application\msedge.exe')
+    )
+    try {
+        $candidats += (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\msedge.exe' -ErrorAction Stop).'(default)'
+    }
+    catch { }
+    $edge = $candidats | Where-Object { $_ -and (Test-Path -Path $_ -PathType Leaf) } | Select-Object -First 1
+
+    if ($edge) {
+        $profil = Join-Path $env:LOCALAPPDATA 'PlanningOutlook\Edge'
+        Start-Process -FilePath $edge -ArgumentList @(
+            "--app=$Adresse",
+            "--user-data-dir=`"$profil`"",
+            '--window-size=1280,900',
+            '--no-first-run',
+            '--no-default-browser-check'
+        )
+    }
+    else {
+        Write-Host 'Edge introuvable : ouverture dans le navigateur par défaut.' -ForegroundColor DarkYellow
+        Start-Process $Adresse
+    }
+}
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Point d'entrée principal
 # ──────────────────────────────────────────────────────────────────────────────
 
 Write-Host ''
 Write-Host '╔══════════════════════════════════════════════════════╗' -ForegroundColor DarkCyan
-Write-Host '║   Planning CPDL  →  Calendrier Outlook partagé v2.0  ║' -ForegroundColor DarkCyan
+Write-Host '║   Planning CPDL  →  Calendrier Outlook partagé v2.1  ║' -ForegroundColor DarkCyan
 Write-Host '║   DSI EFS – Direction des Systèmes d''Information     ║' -ForegroundColor DarkCyan
 Write-Host '╚══════════════════════════════════════════════════════╝' -ForegroundColor DarkCyan
 Write-Host ''
 
+try { Start-Transcript -Path $FichierJournal -Force | Out-Null } catch { }
+
 if (-not (Test-Path -Path $FichierHtml -PathType Leaf)) {
-    Write-Error "Page introuvable : $FichierHtml (elle doit être dans le même dossier que le script)."
-    exit 1
+    Show-Erreur "Page introuvable : $FichierHtml`n`nElle doit être dans le même dossier que le script."
 }
 
 $jeton    = [guid]::NewGuid().ToString('N')
@@ -490,24 +575,43 @@ try {
     $ecouteur.Start()
 }
 catch {
-    Write-Error "Impossible d'écouter sur $adresse ($($_.Exception.Message)). Le port est peut-être déjà utilisé : relancez avec -Port 9000 par exemple."
-    exit 1
+    # Application déjà lancée ? On ouvre simplement une nouvelle fenêtre dessus.
+    try {
+        $existante = Invoke-WebRequest -Uri $adresse -UseBasicParsing -TimeoutSec 3
+        if ($existante.Content -match 'planning-outlook-config') {
+            Write-Host 'Application déjà lancée : ouverture d''une fenêtre.' -ForegroundColor Yellow
+            if (-not $SansNavigateur) { Open-FenetreApplication -Adresse $adresse }
+            try { Stop-Transcript | Out-Null } catch { }
+            exit 0
+        }
+    }
+    catch { }
+    Show-Erreur "Impossible de démarrer l'application sur $adresse.`n`n$($_.Exception.Message)`n`nLe port est peut-être utilisé par un autre programme : relancez avec -Port 9000 par exemple."
 }
 
 Write-Host "Application disponible sur : $adresse" -ForegroundColor Green
 Write-Host "Configuration              : $FichierConfig" -ForegroundColor Gray
-Write-Host 'Laissez cette fenêtre ouverte pendant l''utilisation. Ctrl+C pour arrêter.' -ForegroundColor Yellow
+Write-Host "Journal                    : $FichierJournal" -ForegroundColor Gray
+Write-Host 'Arrêt automatique à la fermeture de la fenêtre (ou Ctrl+C).' -ForegroundColor Yellow
 Write-Host ''
 
 if (-not $SansNavigateur) {
-    Start-Process $adresse
+    Open-FenetreApplication -Adresse $adresse
 }
 
+$script:DernierSignal = [datetime]::Now
 try {
     while ($ecouteur.IsListening -and -not $script:Arret) {
         $attente = $ecouteur.BeginGetContext($null, $null)
-        # Attente par tranches de 500 ms pour que Ctrl+C reste pris en compte
-        while (-not $attente.AsyncWaitHandle.WaitOne(500)) { }
+        # Attente par tranches de 500 ms : Ctrl+C reste pris en compte et l'inactivité est surveillée
+        while (-not $attente.AsyncWaitHandle.WaitOne(500)) {
+            if (([datetime]::Now - $script:DernierSignal) -gt $DelaiInactivite) {
+                Write-Host 'Fenêtre de l''application fermée : arrêt.' -ForegroundColor Gray
+                $script:Arret = $true
+                break
+            }
+        }
+        if ($script:Arret) { break }
         $contexte = $ecouteur.EndGetContext($attente)
         Invoke-Requete -Contexte $contexte -Jeton $jeton
     }
@@ -517,4 +621,5 @@ finally {
     $ecouteur.Close()
     Write-Host ''
     Write-Host 'Serveur arrêté.' -ForegroundColor Gray
+    try { Stop-Transcript | Out-Null } catch { }
 }

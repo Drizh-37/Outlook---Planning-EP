@@ -636,7 +636,12 @@ async function api(chemin, corps) {
     options.headers['Content-Type'] = 'application/json; charset=utf-8';
     options.body = typeof corps === 'string' ? corps : JSON.stringify(corps);
   }
-  const rep = await fetch(chemin, options);
+  let rep;
+  try {
+    rep = await fetch(chemin, options);
+  } catch (e) {
+    throw new Error('l\'application ne répond plus (fermée ou arrêtée). Relancez Lancer-Planning-Outlook.cmd');
+  }
   const data = await rep.json().catch(() => ({}));
   if (!rep.ok) throw new Error(data.erreur || `Erreur HTTP ${rep.status}`);
   return data;
@@ -1726,6 +1731,7 @@ async function injecterOutlook(simulation) {
 async function quitterApplication() {
   if (!confirm('Arrêter le serveur local ? La page ne pourra plus piloter Outlook.')) return;
   try { await api('/api/quitter', {}); } catch (e) { /* serveur déjà arrêté */ }
+  window.close(); /* fonctionne dans la fenêtre d'application ; sinon le message ci-dessous reste affiché */
   document.body.innerHTML = '<main><div class="card"><h2>Application fermée</h2><p>Vous pouvez fermer cet onglet.</p></div></main>';
 }
 
@@ -1760,6 +1766,17 @@ dz.addEventListener('drop', e => {
   dz.classList.remove('drag-over');
   handleFile(e.dataTransfer.files[0]);
 });
+
+/* ── Présence : le script s'arrête de lui-même quand la fenêtre est fermée ── */
+if (CONNECTE) {
+  setInterval(() => api('/api/presence', {}).catch(() => {}), 20000);
+  window.addEventListener('pagehide', () => {
+    try {
+      fetch('/api/au-revoir', { method: 'POST', keepalive: true, body: '{}',
+        headers: { 'X-Jeton': JETON, 'Content-Type': 'application/json; charset=utf-8' } });
+    } catch (e) { /* ignoré */ }
+  });
+}
 
 /* ── Démarrage ── */
 renderModeBanner();

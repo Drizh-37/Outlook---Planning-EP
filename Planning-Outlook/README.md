@@ -10,9 +10,10 @@ les rendez-vous dans le calendrier partagé, collaborateur compris dans la zone
 | Fichier | Rôle |
 |---|---|
 | `Lancer-Planning-Outlook.cmd` | Double-clic pour démarrer l'application |
-| `Planning-Outlook.ps1` | Petit serveur local qui affiche la page et pilote Outlook |
+| `Planning-Outlook.ps1` | Moteur invisible : affiche la page dans sa fenêtre et pilote Outlook |
 | `Planning-Outlook.html` | L'interface (lecture Excel, contrôles, configuration) |
-| `config.json` | Créé au premier enregistrement : équipe, horaires, catégories, calendrier |
+| `config.json` | Créé au premier enregistrement : équipe, codes, horaires, catégories, calendrier |
+| `Planning-Outlook.log` | Journal du dernier lancement (utile en cas de souci) |
 
 Les trois premiers fichiers doivent rester dans le même dossier.
 
@@ -20,7 +21,8 @@ Les trois premiers fichiers doivent rester dans le même dossier.
 
 1. Ouvrir Outlook.
 2. Double-cliquer sur `Lancer-Planning-Outlook.cmd`.
-   Une fenêtre PowerShell s'ouvre (à laisser ouverte), puis le navigateur affiche l'application.
+   L'application s'ouvre dans sa propre fenêtre (Edge en mode application, sans onglets
+   ni barre d'adresse). Aucune console PowerShell n'est affichée.
 3. Étape 1 : déposer le fichier Excel (onglet dont le nom commence par « Planning »).
 4. Étape 2 : vérifier l'aperçu et les incohérences.
 5. Étape 3 : le calendrier `\\Cpdl.ServiceInformatique\Calendrier` est déjà renseigné. Cliquer sur **Vérifier**, puis **Simuler**, puis **Injecter dans Outlook**.
@@ -33,6 +35,10 @@ Options de l'étape 3 :
   le collaborateur figure en « Obligatoire » mais ne reçoit aucun mail.
 
 Seul ce calendrier est ouvert : l'application ne parcourt pas les autres. Un autre chemin peut être saisi dans le champ ; il est mémorisé pour la fois suivante.
+
+Pour quitter : fermer la fenêtre, ou cliquer sur **Fermer l'application**. Le moteur s'arrête
+de lui-même quelques secondes après la fermeture (3 minutes au plus).
+Relancer l'application alors qu'elle tourne déjà rouvre simplement une fenêtre.
 
 ## Configurer l'équipe
 
@@ -86,7 +92,7 @@ désormais le participant obligatoire et la catégorie ; le script
 
 | Symptôme | Piste |
 |---|---|
-| La fenêtre se ferme aussitôt | Stratégie d'exécution bloquée par GPO : lancer `powershell -ExecutionPolicy Bypass -File Planning-Outlook.ps1` ou faire signer le script |
+| Rien ne s'ouvre | Lancer `Lancer-Planning-Outlook.cmd /console` pour voir les messages, ou lire `Planning-Outlook.log`. Si l'exécution des scripts est bloquée par GPO, faire signer le script |
 | « Port déjà utilisé » | `Lancer-Planning-Outlook.cmd -Port 9000` |
 | « Calendrier introuvable » | Vérifier que la boîte Cpdl.ServiceInformatique apparaît dans Outlook (ou que vous avez les droits sur son calendrier) et que le chemin est exact |
 | Dates sur la mauvaise année | Saisir l'année du premier jour dans « Année de la première colonne » (étape 1) ; le passage décembre → janvier est automatique |
